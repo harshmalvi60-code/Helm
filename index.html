@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HELM — The AI Growth Operator for D2C Brands</title>
+<meta name="description" content="HELM connects to Shopify, Meta Ads, Klaviyo, Google Ads & GA4 — then continuously tells you where you're losing revenue and what to fix next." />
+
+<!-- Favicon -->
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+<!-- Open Graph -->
+<meta property="og:title" content="HELM — The AI Growth Operator for D2C Brands" />
+<meta property="og:description" content="Stop checking dashboards. Get told what to do. HELM finds where your brand is leaking revenue — and ships you the fix every morning." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://helm.ai" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="HELM — The AI Growth Operator for D2C Brands" />
+<meta name="twitter:description" content="Stop checking dashboards. Get told what to do." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg-base: #050505;
+    --bg-section: #0A0A0A;
+    --bg-card: #0E0E0E;
+    --bg-elevated: #131313;
+    --accent: #00FF88;
+    --accent-dim: rgba(0, 255, 136, 0.6);
+    --accent-soft: rgba(0, 255, 136, 0.08);
+    --accent-glow: rgba(0, 255, 136, 0.25);
+    --text-primary: #F5F5F5;
+    --text-secondary: #8A8A8A;
+    --text-tertiary: #4A4A4A;
+    --border: rgba(255, 255, 255, 0.06);
+    --border-strong: rgba(255, 255, 255, 0.10);
+    --border-accent: rgba(0, 255, 136, 0.22);
+    --glass: rgba(255, 255, 255, 0.025);
+    --danger: #FF4757;
+    --warning: #FFA94D;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    line-height: 1.6;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Ambient background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 64px 64px;
+    pointer-events: none;
+    z-index: 0;
+    mask-image: radial-gradient(ellipse at center, black 40%, transparent 85%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 40%, transparent 85%);
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 32px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ============ NAV ============ */
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    background: rgba(5, 5, 5, 0.72);
+    border-bottom: 1px solid var(--border);
+    transition: all 0.3s ease;
+  }
+
+  .nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.18em;
+  }
+
+  .logo-mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--accent);
+    box-shadow: 0 0 24px rgba(0, 255, 136, 0.5);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .logo-mark::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--bg-base);
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 36px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--text-primary); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border-radius: 8px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    border: none;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    box-shadow: 0 0 0 1px var(--accent), 0 8px 32px rgba(0, 255, 136, 0.25);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 1px var(--accent), 0 12px 40px rgba(0, 255, 136, 0.40);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-strong);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--border-accent);
+    background: var(--accent-soft);
+  }
+
+  /* ============ HERO ============ */
+  .hero {
+    padding: 180px 0 120px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    width: 800px;
+    height: 800px;
+    transform: translateX(-50%);
+    background: radial-gradient(circle, rgba(0, 255, 136, 0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .hero-inner {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 60px;
+    align-items: center;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 100px;
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-accent);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards;
+  }
+
+  .badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .hero h1 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: clamp(40px, 5.5vw, 68px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.1s forwards;
+  }
+
+  .hero h1 .accent {
+    color: var(--accent);
+    text-shadow: 0 0 40px rgba(0, 255, 136, 0.4);
+  }
+
+  .hero .subhead {
+    font-size: 19px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 540px;
+    margin-bottom: 36px;
+    font-weight: 400;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.2s forwards;
+  }
+
+  .hero-ctas {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 48px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.3s forwards;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 48px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.4s forwards;
+  }
+
+  .hero-stat-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+  }
+
+  .hero-stat-num .accent { color: var(--accent); }
+
+  .hero-stat-label {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 4px;
+  }
+
+  /* ===== ORB ===== */
+  .orb-stage {
+    position: relative;
+    width: 100%;
+    height: 520px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    animation: fadeIn 1.2s ease 0.3s forwards;
+  }
+
+  .orb {
+    position: relative;
+    width: 420px;
+    height: 420px;
+  }
+
+  .ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    border: 1px dashed rgba(0, 255, 136, 0.25);
+  }
+
+  .ring-1 { width: 420px; height: 420px; animation: spin 60s linear infinite; }
+  .ring-2 { width: 320px; height: 320px; animation: spin 40s linear infinite reverse; border-color: rgba(0, 255, 136, 0.18); }
+  .ring-3 { width: 220px; height: 220px; animation: spin 25s linear infinite; border-style: dotted; }
+
+  .ring-solid {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(0, 255, 136, 0.4);
+  }
+
+  .ring-solid-1 { width: 140px; height: 140px; box-shadow: inset 0 0 40px rgba(0, 255, 136, 0.15); }
+
+  .orb-core {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #00FF88 0%, #00B860 60%, transparent 100%);
+    box-shadow:
+      0 0 60px rgba(0, 255, 136, 0.6),
+      0 0 120px rgba(0, 255, 136, 0.3),
+      inset 0 0 20px rgba(255, 255, 255, 0.3);
+    animation: breathe 3s ease-in-out infinite;
+  }
+
+  .orb-core::after {
+    content: '';
+    position: absolute;
+    inset: 20px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    filter: blur(8px);
+  }
+
+  /* Orbiting nodes */
+  .orbit-wrap {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 320px;
+    height: 320px;
+    transform: translate(-50%, -50%);
+    animation: spin 30s linear infinite;
+  }
+
+  .orbit-wrap-2 {
+    width: 420px;
+    height: 420px;
+    animation: spin 50s linear infinite reverse;
+  }
+
+  .node {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 16px rgba(0, 255, 136, 0.8);
+  }
+
+  .node.dim {
+    width: 6px;
+    height: 6px;
+    background: rgba(0, 255, 136, 0.6);
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+  }
+
+  /* Data labels around orb */
+  .data-label {
+    position: absolute;
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-accent);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    animation: floatLabel 4s ease-in-out infinite;
+  }
+
+  .data-label .value {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .data-label-1 { top: 10%; left: -5%; animation-delay: 0s; }
+  .data-label-2 { top: 35%; right: -10%; animation-delay: 1.2s; }
+  .data-label-3 { bottom: 20%; left: -8%; animation-delay: 2.4s; }
+  .data-label-4 { bottom: 5%; right: 5%; animation-delay: 0.6s; }
+
+  /* ============ LOGO STRIP ============ */
+  .logo-strip {
+    padding: 60px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo-strip-label {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: 32px;
+    font-weight: 500;
+  }
+
+  .integration-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .integration {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+    transition: color 0.3s;
+  }
+
+  .integration:hover { color: var(--text-primary); }
+
+  .integration-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .integration-icon svg { width: 100%; height: 100%; }
+
+  /* ============ SECTION HEAD ============ */
+  section { padding: 120px 0; position: relative; }
+
+  .section-eyebrow {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin-bottom: 16px;
+    padding: 6px 12px;
+    background: var(--accent-soft);
+    border-radius: 100px;
+    border: 1px solid var(--border-accent);
+  }
+
+  .section-head h2 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: clamp(32px, 4vw, 48px);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+    max-width: 720px;
+  }
+
+  .section-head p {
+    font-size: 18px;
+    color: var(--text-secondary);
+    max-width: 640px;
+    line-height: 1.6;
+  }
+
+  .section-head { margin-bottom: 64px; }
+
+  /* ============ PROBLEM ============ */
+  .problem {
+    text-align: center;
+    padding: 100px 0;
+  }
+
+  .problem h2 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: clamp(28px, 3.6vw, 44px);
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .problem h2 .strike {
+    text-decoration: line-through;
+    text-decoration-color: var(--danger);
+    text-decoration-thickness: 3px;
+    color: var(--text-tertiary);
+  }
+
+  .problem h2 .accent { color: var(--accent); }
+
+  /* ============ MONITOR GRID ============ */
+  .monitor-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .monitor-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 22px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .monitor-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top left, rgba(0, 255, 136, 0.05) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .monitor-card:hover {
+    border-color: var(--border-accent);
+    transform: translateY(-2px);
+  }
+
+  .monitor-card:hover::before { opacity: 1; }
+
+  .monitor-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--accent-soft);
+    border: 1px solid var(--border-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 18px;
+    color: var(--accent);
+    position: relative;
+    z-index: 1;
+  }
+
+  .monitor-card h3 {
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 8px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .monitor-card p {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ============ HOW IT WORKS ============ */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    position: relative;
+  }
+
+  .step {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px 28px;
+    position: relative;
+  }
+
+  .step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #000;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 24px rgba(0, 255, 136, 0.4);
+  }
+
+  .step h3 {
+    font-weight: 600;
+    font-size: 22px;
+    margin-bottom: 12px;
+    letter-spacing: -0.01em;
+  }
+
+  .step p {
+    color: var(--text-secondary);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* ============ LIVE FEED ============ */
+  .feed-section {
+    background: var(--bg-section);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .feed-wrap {
+    background: var(--bg-card);
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0, 255, 136, 0.06), 0 0 0 1px rgba(0, 255, 136, 0.04);
+  }
+
+  .feed-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.015);
+  }
+
+  .feed-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  .feed-controls {
+    display: flex;
+    gap: 6px;
+  }
+
+  .feed-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border-strong);
+  }
+
+  .feed-body {
+    padding: 8px;
+  }
+
+  .insight {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 18px;
+    align-items: center;
+    padding: 22px 20px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .insight:hover { background: rgba(255, 255, 255, 0.02); }
+
+  .insight + .insight {
+    border-top: 1px solid var(--border);
+  }
+
+  .severity {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 6px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .severity.critical {
+    background: rgba(255, 71, 87, 0.12);
+    color: var(--danger);
+    border: 1px solid rgba(255, 71, 87, 0.3);
+  }
+
+  .severity.high {
+    background: rgba(255, 169, 77, 0.12);
+    color: var(--warning);
+    border: 1px solid rgba(255, 169, 77, 0.3);
+  }
+
+  .severity.opportunity {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid var(--border-accent);
+  }
+
+  .insight-content { min-width: 0; }
+
+  .insight-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+    letter-spacing: 0.04em;
+  }
+
+  .insight-text {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.45;
+  }
+
+  .insight-text .highlight {
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+  }
+
+  .impact {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .impact-label {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 2px;
+  }
+
+  .impact-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  .impact-value.loss { color: var(--danger); }
+
+  .insight-action {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+  }
+
+  .insight:hover .insight-action {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+
+  /* ============ COMPARE ============ */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .compare-card {
+    border-radius: 18px;
+    padding: 36px 32px;
+    border: 1px solid var(--border);
+  }
+
+  .compare-card.before {
+    background: var(--bg-card);
+  }
+
+  .compare-card.after {
+    background: linear-gradient(180deg, rgba(0, 255, 136, 0.04) 0%, var(--bg-card) 100%);
+    border-color: var(--border-accent);
+    box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.08), 0 24px 60px rgba(0, 255, 136, 0.08);
+  }
+
+  .compare-card h3 {
+    font-size: 14px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-tertiary);
+    margin-bottom: 24px;
+  }
+
+  .compare-card.after h3 { color: var(--accent); }
+
+  .compare-list {
+    list-style: none;
+  }
+
+  .compare-list li {
+    padding: 14px 0;
+    font-size: 15.5px;
+    color: var(--text-primary);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    line-height: 1.5;
+  }
+
+  .compare-list li:first-child { border-top: none; }
+
+  .compare-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+    color: var(--text-tertiary);
+  }
+
+  .compare-card.after .compare-icon { color: var(--accent); }
+
+  .compare-card.before li { color: var(--text-secondary); }
+
+  /* ============ PRICING ============ */
+  .pricing {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .price-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 36px 30px;
+    position: relative;
+    transition: border-color 0.3s;
+  }
+
+  .price-card:hover { border-color: var(--border-strong); }
+
+  .price-card.featured {
+    background: linear-gradient(180deg, rgba(0, 255, 136, 0.04) 0%, var(--bg-card) 60%);
+    border-color: var(--border-accent);
+    box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.06), 0 24px 60px rgba(0, 255, 136, 0.08);
+  }
+
+  .price-tag {
+    position: absolute;
+    top: -12px;
+    right: 24px;
+    background: var(--accent);
+    color: #000;
+    padding: 5px 12px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    box-shadow: 0 8px 24px rgba(0, 255, 136, 0.3);
+  }
+
+  .price-name {
+    font-weight: 600;
+    font-size: 20px;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+
+  .price-tier {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 28px;
+  }
+
+  .price-amount {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  .price-num {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: 48px;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  .price-period {
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+
+  .price-note {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-bottom: 28px;
+  }
+
+  .price-cta {
+    width: 100%;
+    margin-bottom: 28px;
+    justify-content: center;
+  }
+
+  .price-features {
+    list-style: none;
+    border-top: 1px solid var(--border);
+    padding-top: 22px;
+  }
+
+  .price-features li {
+    padding: 8px 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    line-height: 1.5;
+  }
+
+  .price-features li svg {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    color: var(--accent);
+    margin-top: 3px;
+  }
+
+  /* ============ CTA ============ */
+  .cta-final {
+    text-align: center;
+    padding: 140px 0;
+    position: relative;
+  }
+
+  .cta-final::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, rgba(0, 255, 136, 0.10) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .cta-final-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .cta-final h2 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: clamp(36px, 4.5vw, 56px);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 22px;
+  }
+
+  .cta-final h2 .accent { color: var(--accent); }
+
+  .cta-final p {
+    font-size: 18px;
+    color: var(--text-secondary);
+    margin-bottom: 36px;
+    line-height: 1.6;
+  }
+
+  .email-capture {
+    display: flex;
+    gap: 8px;
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    padding: 8px;
+    transition: border-color 0.2s;
+  }
+
+  .email-capture:focus-within {
+    border-color: var(--border-accent);
+    box-shadow: 0 0 0 4px rgba(0, 255, 136, 0.08);
+  }
+
+  .email-capture input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 15px;
+    padding: 12px 14px;
+  }
+
+  .email-capture input::placeholder { color: var(--text-tertiary); }
+
+  /* ============ FOOTER ============ */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 50px 0 30px;
+    background: var(--bg-section);
+  }
+
+  .footer-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+
+  .footer-meta {
+    font-size: 13px;
+    color: var(--text-tertiary);
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 28px;
+    list-style: none;
+  }
+
+  .footer-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+
+  .footer-links a:hover { color: var(--accent); }
+
+  /* ============ ANIMATIONS ============ */
+  @keyframes spin {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+
+  @keyframes breathe {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    50% { transform: translate(-50%, -50%) scale(1.08); opacity: 0.92; }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.9); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes floatLabel {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 960px) {
+    .hero-inner { grid-template-columns: 1fr; }
+    .orb-stage { height: 380px; }
+    .orb { width: 320px; height: 320px; }
+    .ring-1 { width: 320px; height: 320px; }
+    .ring-2 { width: 240px; height: 240px; }
+    .ring-3 { width: 160px; height: 160px; }
+    .orbit-wrap { width: 240px; height: 240px; }
+    .orbit-wrap-2 { width: 320px; height: 320px; }
+    .monitor-grid { grid-template-columns: repeat(2, 1fr); }
+    .steps { grid-template-columns: 1fr; }
+    .compare { grid-template-columns: 1fr; }
+    .pricing { grid-template-columns: 1fr; }
+    .nav-links { display: none; }
+    .insight { grid-template-columns: auto 1fr; }
+    .impact, .insight-action { grid-column: 2; text-align: left; }
+    .impact { margin-top: 6px; }
+  }
+
+  @media (max-width: 640px) {
+    .container { padding: 0 20px; }
+    .hero { padding: 140px 0 80px; }
+    section { padding: 80px 0; }
+    .hero-stats { gap: 28px; }
+    .integration-row { justify-content: center; }
+    .monitor-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="logo">
+      <span class="logo-mark"></span>
+      <span>HELM</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#monitor">Product</a></li>
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#">Docs</a></li>
+    </ul>
+    <a href="#cta" class="btn btn-primary">Get Free Audit</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-inner">
+      <div>
+        <span class="badge">
+          <span class="badge-dot"></span>
+          AI Growth Operator · Live
+        </span>
+        <h1>Your brand is leaking revenue.<br><span class="accent">HELM</span> finds it.</h1>
+        <p class="subhead">HELM connects to every tool you run — Shopify, Meta Ads, Klaviyo, Google Ads, GA4 — and tells you, in plain English, exactly where you're losing money and what to do next. Stop checking dashboards. Start getting decisions.</p>
+        <div class="hero-ctas">
+          <a href="#cta" class="btn btn-primary">
+            Get Free Growth Audit
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </a>
+          <a href="#feed" class="btn btn-ghost">See it in action</a>
+        </div>
+        <div class="hero-stats">
+          <div>
+            <div class="hero-stat-num">~<span class="accent">₹4.2L</span></div>
+            <div class="hero-stat-label">Avg. monthly revenue recovered</div>
+          </div>
+          <div>
+            <div class="hero-stat-num"><span class="accent">24/7</span></div>
+            <div class="hero-stat-label">Continuous monitoring</div>
+          </div>
+          <div>
+            <div class="hero-stat-num"><span class="accent">8</span></div>
+            <div class="hero-stat-label">Growth vectors watched</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="orb-stage">
+        <div class="data-label data-label-1">ROAS · <span class="value">2.84x</span></div>
+        <div class="data-label data-label-2">Checkout · <span class="value">68.3%</span></div>
+        <div class="data-label data-label-3">LTV · <span class="value">+18%</span></div>
+        <div class="data-label data-label-4">CAC · <span class="value">₹612</span></div>
+
+        <div class="orb">
+          <div class="ring ring-1"></div>
+          <div class="ring ring-2"></div>
+          <div class="ring ring-3"></div>
+          <div class="ring-solid ring-solid-1"></div>
+
+          <div class="orbit-wrap">
+            <div class="node" style="top: -5px; left: 50%; transform: translateX(-50%);"></div>
+            <div class="node dim" style="top: 50%; right: -3px; transform: translateY(-50%);"></div>
+            <div class="node" style="bottom: -5px; left: 50%; transform: translateX(-50%);"></div>
+            <div class="node dim" style="top: 50%; left: -3px; transform: translateY(-50%);"></div>
+          </div>
+
+          <div class="orbit-wrap orbit-wrap-2">
+            <div class="node dim" style="top: 15%; right: 10%;"></div>
+            <div class="node" style="bottom: 15%; left: 10%;"></div>
+            <div class="node dim" style="top: 80%; right: 18%;"></div>
+          </div>
+
+          <div class="orb-core"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LOGO STRIP -->
+<div class="logo-strip">
+  <div class="container">
+    <div class="logo-strip-label">Plugs directly into your entire growth stack</div>
+    <div class="integration-row">
+      <div class="integration"><div class="integration-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.337 2.91a.376.376 0 0 0-.337-.31c-.087-.005-1.747-.029-1.747-.029s-1.392-1.353-1.529-1.49C11.587.943 11.32 1 11.219 1.029l-.706.219C10.297.713 9.93.249 9.244.249c-.013 0-.027 0-.04.001-.211-.273-.471-.388-.696-.388-1.738 0-2.568 2.173-2.828 3.273-.674.209-1.151.357-1.215.378-.376.118-.388.129-.437.484C4.001 4.252 3 11.997 3 11.997L11.34 13.5 18 11.85S15.366 3.087 15.337 2.91zM10.61 1.604c-.115.036-.245.077-.385.121V1.6c0-.453-.06-.819-.156-1.108.464.058.776.581.541 1.112zm-.926-.974c.107.276.158.624.158 1.092v.044c-.49.152-1.021.317-1.554.483.299-1.151.86-1.706 1.396-1.619zm-.371-.351c.099 0 .198.022.293.063-.563.265-1.166.933-1.421 2.272l-1.234.382c.298-1.015 1.001-2.717 2.362-2.717zM12 21l9-2-2-13-15 3 8 12z"/></svg></div>Shopify</div>
+      <div class="integration"><div class="integration-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></div>Meta Ads</div>
+      <div class="integration"><div class="integration-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.545 10.239v3.821h5.445c-.712 2.315-2.647 3.972-5.445 3.972a6.033 6.033 0 1 1 0-12.064c1.498 0 2.866.549 3.921 1.453l2.814-2.814A9.969 9.969 0 0 0 12.545 2C7.021 2 2.543 6.477 2.543 12s4.478 10 10.002 10c8.396 0 10.249-7.85 9.426-11.748l-9.426-.013z"/></svg></div>Google Ads</div>
+      <div class="integration"><div class="integration-icon"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg></div>Klaviyo</div>
+      <div class="integration"><div class="integration-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg></div>GA4</div>
+      <div class="integration"><div class="integration-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></div>+ 12 more</div>
+    </div>
+  </div>
+</div>
+
+<!-- PROBLEM -->
+<section class="problem">
+  <div class="container">
+    <h2 class="reveal">You don't have a <span class="strike">data</span> problem.<br>You have a <span class="accent">decisions</span> problem.</h2>
+  </div>
+</section>
+
+<!-- MONITOR GRID -->
+<section id="monitor">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="section-eyebrow">8 Growth Vectors</span>
+      <h2>HELM watches everything that bleeds revenue.</h2>
+      <p>Every founder loses money in the same eight places. HELM monitors all of them — continuously, across all your tools, in real time.</p>
+    </div>
+
+    <div class="monitor-grid">
+      <div class="monitor-card reveal">
+        <div class="monitor-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg></div>
+        <h3>Conversion drops</h3>
+        <p>Detects checkout, PDP, and cart issues the moment funnel performance slips below baseline.</p>
+      </div>
+      <div class="monitor-card reveal">
+        <div class="monitor-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg></div>
+        <h3>Creative fatigue</h3>
+        <p>Catches ad fatigue 5-7 days before CPM spikes wreck your ROAS — and tells you which creative to swap.</p>
+      </div>
+      <div class="monitor-card reveal">
+        <div class="monitor-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <h3>Retention leaks</h3>
+        <p>Flags churn risk segments and missing lifecycle triggers before repeat revenue collapses.</p>
+      </div>
+      <div class="monitor-card reveal">
+        <div class="monitor-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+        <h3>ROAS decline</h3>
+        <p>Tracks ROAS at the campaign, ad set, and creative level — and finds the leak before you do.</p>
+      </div>
+      <div class="monitor-card reveal">
+        <div class="monitor-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><path d="M6 14h4"/></svg></div>
+        <h3>Checkout drop-offs</h3>
+        <p>Spots payment failures, mobile UX bugs, and silent shipping issues stealing your last-click revenue.</p>
+      </div>
+      <div class="monitor-card reveal">
+        <div class="monitor-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <h3>Scaling signals</h3>
+        <p>Surfaces creatives, audiences, and SKUs where you should be spending more — backed by hard numbers.</p>
+      </div>
+      <div class="monitor-card reveal">
+        <div class="monitor-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+        <h3>Revenue leaks</h3>
+        <p>Audits flows, automations, popups, and offers for missed revenue — every single day.</p>
+      </div>
+      <div class="monitor-card reveal">
+        <div class="monitor-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <h3>High-LTV cohorts</h3>
+        <p>Identifies your 10% best customers — and the first-purchase patterns that predict them.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how" style="background: var(--bg-section); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="section-eyebrow">How it works</span>
+      <h2>Three steps. Then never touch a dashboard again.</h2>
+    </div>
+
+    <div class="steps">
+      <div class="step reveal">
+        <div class="step-number">01</div>
+        <h3>Connect</h3>
+        <p>One-click OAuth to Shopify, Meta, Google, Klaviyo, GA4 and 12 more. No tracking pixels to install, no dev time, no spreadsheets. We're reading from your existing stack — securely.</p>
+      </div>
+      <div class="step reveal">
+        <div class="step-number">02</div>
+        <h3>Analyze</h3>
+        <p>HELM's AI builds a complete model of your business in 6 hours — funnel, retention curve, paid efficiency, channel mix, cohort behavior — and benchmarks it against thousands of D2C brands.</p>
+      </div>
+      <div class="step reveal">
+        <div class="step-number">03</div>
+        <h3>Act</h3>
+        <p>Every morning, HELM ships a prioritized recommendation feed straight to Slack, email, or WhatsApp. Specific, dated, with rupee impact. You decide. Execute. Done.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LIVE FEED -->
+<section id="feed" class="feed-section">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="section-eyebrow">Live Feed</span>
+      <h2>This is what HELM tells you, every morning.</h2>
+      <p>Real recommendation feed from a real D2C brand (₹3.4Cr/month run rate, anonymized). This is what 90 days of HELM looks like — concentrated.</p>
+    </div>
+
+    <div class="feed-wrap reveal">
+      <div class="feed-header">
+        <div class="feed-title">
+          <span class="live-dot"></span>
+          Revenue Intelligence Feed
+        </div>
+        <div class="feed-controls">
+          <div class="feed-dot"></div>
+          <div class="feed-dot"></div>
+          <div class="feed-dot"></div>
+        </div>
+      </div>
+
+      <div class="feed-body">
+        <div class="insight">
+          <span class="severity critical">Critical</span>
+          <div class="insight-content">
+            <div class="insight-meta">07:14 IST · META ADS · CREATIVE FATIGUE</div>
+            <div class="insight-text">Creative <span class="highlight">CTR_v4_lifestyle</span> CPM up 38% in 7 days. Frequency hit 4.2. Swap by Friday or projected loss is <span class="highlight">₹2,84,000/week</span>.</div>
+          </div>
+          <div class="impact">
+            <div class="impact-label">At Risk</div>
+            <div class="impact-value loss">₹2.84L</div>
+          </div>
+          <div class="insight-action"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+
+        <div class="insight">
+          <span class="severity critical">Critical</span>
+          <div class="insight-content">
+            <div class="insight-meta">07:14 IST · SHOPIFY · CHECKOUT</div>
+            <div class="insight-text">Mobile checkout abandon rate up <span class="highlight">+41%</span> since Tue. Shipping calculator loads 4.2s late on iOS Safari. Recoverable monthly: <span class="highlight">₹4,12,000</span>.</div>
+          </div>
+          <div class="impact">
+            <div class="impact-label">Recoverable</div>
+            <div class="impact-value">₹4.12L</div>
+          </div>
+          <div class="insight-action"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+
+        <div class="insight">
+          <span class="severity opportunity">Opportunity</span>
+          <div class="insight-content">
+            <div class="insight-meta">07:14 IST · COHORT INTELLIGENCE</div>
+            <div class="insight-text">Customers whose first order included <span class="highlight">SKU-FACEWASH-100ML</span> show 2.3x LTV vs avg. Push this SKU as the entry product — projected <span class="highlight">+18% LTV uplift</span>.</div>
+          </div>
+          <div class="impact">
+            <div class="impact-label">Projected</div>
+            <div class="impact-value">+18% LTV</div>
+          </div>
+          <div class="insight-action"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+
+        <div class="insight">
+          <span class="severity high">High</span>
+          <div class="insight-content">
+            <div class="insight-meta">07:14 IST · KLAVIYO · LIFECYCLE</div>
+            <div class="insight-text">Welcome flow missing 72-hr discount trigger. <span class="highlight">23% of new subscribers</span> never convert. Adding this step recovers an estimated <span class="highlight">₹1,68,000/month</span>.</div>
+          </div>
+          <div class="impact">
+            <div class="impact-label">Monthly</div>
+            <div class="impact-value">₹1.68L</div>
+          </div>
+          <div class="insight-action"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+
+        <div class="insight">
+          <span class="severity opportunity">Opportunity</span>
+          <div class="insight-content">
+            <div class="insight-meta">07:14 IST · META ADS · SCALING</div>
+            <div class="insight-text">Ad set <span class="highlight">LAL_3pct_purchasers</span> is at 4.1x ROAS with budget headroom. Recommend scaling by ₹15K/day. Monitor for 72 hours.</div>
+          </div>
+          <div class="impact">
+            <div class="impact-label">Scale</div>
+            <div class="impact-value">+₹15K/d</div>
+          </div>
+          <div class="insight-action"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+
+        <div class="insight">
+          <span class="severity high">High</span>
+          <div class="insight-content">
+            <div class="insight-meta">07:14 IST · RETENTION · CHURN</div>
+            <div class="insight-text">Cohort that bought in March is <span class="highlight">62% under expected re-order rate</span>. Trigger personalized win-back campaign before day 90.</div>
+          </div>
+          <div class="impact">
+            <div class="impact-label">Cohort</div>
+            <div class="impact-value">412 users</div>
+          </div>
+          <div class="insight-action"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARE -->
+<section>
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="section-eyebrow">The shift</span>
+      <h2>Before HELM vs. After HELM.</h2>
+    </div>
+
+    <div class="compare">
+      <div class="compare-card before reveal">
+        <h3>Without HELM</h3>
+        <ul class="compare-list">
+          <li><svg class="compare-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Check 7 different dashboards every morning</li>
+          <li><svg class="compare-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Notice ROAS dropped a week after it actually did</li>
+          <li><svg class="compare-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Decide what to fix based on instinct</li>
+          <li><svg class="compare-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Pay 2-3 growth marketers ₹4L+/mo to do this manually</li>
+          <li><svg class="compare-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Discover checkout bugs from angry customer emails</li>
+          <li><svg class="compare-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Bleed 5-15% of revenue you'll never get back</li>
+        </ul>
+      </div>
+
+      <div class="compare-card after reveal">
+        <h3>With HELM</h3>
+        <ul class="compare-list">
+          <li><svg class="compare-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>One feed. Every morning. Slack, email, or WhatsApp.</li>
+          <li><svg class="compare-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Get flagged the day a problem starts — not the week</li>
+          <li><svg class="compare-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Every action backed by rupee impact and confidence score</li>
+          <li><svg class="compare-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Replace 2 analysts. Pay 10x less. Move 10x faster.</li>
+          <li><svg class="compare-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Catch revenue leaks before they hit your P&L</li>
+          <li><svg class="compare-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Recover ₹3-5L/mo on average within the first 60 days</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing" style="background: var(--bg-section); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="section-eyebrow">Pricing</span>
+      <h2>Built for brands doing ₹50L to ₹50Cr.</h2>
+      <p>Every plan includes all 8 monitoring vectors, all integrations, and unlimited recommendations. We charge by the size of the brand we're watching — not by the depth of the work.</p>
+    </div>
+
+    <div class="pricing">
+      <div class="price-card reveal">
+        <div class="price-name">Operator</div>
+        <div class="price-tier">For brands doing ₹50L – ₹2Cr / year</div>
+        <div class="price-amount">
+          <span class="price-num">₹14,999</span>
+          <span class="price-period">/month</span>
+        </div>
+        <div class="price-note">Billed annually · 14-day free audit</div>
+        <a href="#cta" class="btn btn-ghost price-cta">Start Free Audit</a>
+        <ul class="price-features">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>All 8 monitoring vectors</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>All integrations included</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Daily recommendation feed</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Slack + email delivery</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>1 brand · 1 admin seat</li>
+        </ul>
+      </div>
+
+      <div class="price-card featured reveal">
+        <div class="price-tag">Most Popular</div>
+        <div class="price-name">Scale</div>
+        <div class="price-tier">For brands doing ₹2Cr – ₹15Cr / year</div>
+        <div class="price-amount">
+          <span class="price-num">₹39,999</span>
+          <span class="price-period">/month</span>
+        </div>
+        <div class="price-note">Billed annually · Dedicated growth strategist</div>
+        <a href="#cta" class="btn btn-primary price-cta">Start Free Audit</a>
+        <ul class="price-features">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Everything in Operator</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Real-time alerts (not just daily)</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Cohort & LTV modeling</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>WhatsApp delivery channel</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>5 team seats · 3 brand profiles</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Monthly review with strategist</li>
+        </ul>
+      </div>
+
+      <div class="price-card reveal">
+        <div class="price-name">Enterprise</div>
+        <div class="price-tier">For brands doing ₹15Cr+ / year</div>
+        <div class="price-amount">
+          <span class="price-num">Custom</span>
+        </div>
+        <div class="price-note">Annual contracts · Done-with-you implementation</div>
+        <a href="#cta" class="btn btn-ghost price-cta">Talk to Founders</a>
+        <ul class="price-features">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Everything in Scale</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Custom models for your category</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>API access + private data warehouse</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Unlimited seats & brands</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Dedicated success engineer</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>SLA + custom data residency</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section id="cta" class="cta-final">
+  <div class="container">
+    <div class="cta-final-inner">
+      <span class="badge reveal">
+        <span class="badge-dot"></span>
+        Free Growth Audit · 14 days · No credit card
+      </span>
+      <h2 class="reveal">Stop running your brand on <span class="accent">instinct</span>.</h2>
+      <p class="reveal">Drop your email. HELM connects to your stack, runs a full audit, and ships you a personalized leak report within 24 hours. If it doesn't find at least ₹1L/month in recoverable revenue, you owe us nothing.</p>
+      <form class="email-capture reveal" onsubmit="event.preventDefault(); alert('Audit request received. We\\'ll be in touch within 24h.');">
+        <input type="email" placeholder="founder@yourbrand.com" required />
+        <button type="submit" class="btn btn-primary">
+          Get My Audit
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div style="display: flex; align-items: center; gap: 24px;">
+        <a href="#" class="logo">
+          <span class="logo-mark"></span>
+          <span>HELM</span>
+        </a>
+        <span class="footer-meta">© 2026 Yuvaan Technologies · Made in India</span>
+      </div>
+      <ul class="footer-links">
+        <li><a href="#">Privacy</a></li>
+        <li><a href="#">Terms</a></li>
+        <li><a href="#">Security</a></li>
+        <li><a href="#">Contact</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Scroll reveals
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // Nav shadow on scroll
+  const nav = document.querySelector('nav');
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 8) {
+      nav.style.background = 'rgba(5, 5, 5, 0.92)';
+    } else {
+      nav.style.background = 'rgba(5, 5, 5, 0.72)';
+    }
+  });
+
+  // Insight card cycling (subtle live feel — rotate timestamp on first card every 30s)
+  const insightMeta = document.querySelectorAll('.insight-meta');
+  let baseMinute = 14;
+  setInterval(() => {
+    baseMinute = (baseMinute + 1) % 60;
+    insightMeta.forEach(m => {
+      m.textContent = m.textContent.replace(/\d{2}:\d{2}/, `07:${String(baseMinute).padStart(2, '0')}`);
+    });
+  }, 8000);
+</script>
+
+</body>
+</html>
