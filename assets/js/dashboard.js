@@ -1,6 +1,9 @@
 // HELM — dashboard data + chart rendering.
-// Frontend-only MVP: snapshots are generated client-side from a
-// deterministic daily seed so charts stay believable across refreshes.
+// Real-data path: GET /api/shopify/analytics?range=… returns the snapshot
+// straight from the user's connected Shopify store (server-side fetch).
+// If the user hasn't connected Shopify yet, the API returns { connected: false }
+// and the dashboard page renders an empty/connect state — there are no
+// hardcoded numbers anywhere.
 
 (function () {
   'use strict';
@@ -8,105 +11,11 @@
   function ui() { return window.HelmUI; }
 
   async function loadSnapshot(range = '30d') {
-    await new Promise((r) => setTimeout(r, 220));
-    return generateLocalSnapshot(range);
+    return await ui().apiFetch('/api/shopify/analytics?range=' + encodeURIComponent(range));
   }
 
-  function generateLocalSnapshot(range = '30d') {
-    const days = range === '7d' ? 7 : range === '90d' ? 90 : 30;
-    const seed = Math.floor(Date.now() / 86400000);
-    const r = mulberry32(seed);
-    const series = [];
-    const baseRev = 240000;
-    const baseSpend = 60000;
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(Date.now() - i * 86400000);
-      const wknd = [0, 6].includes(date.getDay()) ? 1.18 : 1;
-      const trend = 1 + (days - i) * 0.003;
-      const rev = baseRev * wknd * trend * (0.82 + r() * 0.38);
-      const spend = baseSpend * trend * (0.88 + r() * 0.28);
-      const sessions = Math.round(rev / (180 + r() * 60));
-      const orders = Math.round(rev / (2200 + r() * 400));
-      series.push({
-        date: date.toISOString().slice(0, 10),
-        revenue: Math.round(rev),
-        spend: Math.round(spend),
-        roas: +(rev / spend).toFixed(2),
-        sessions, orders,
-        cvr: +((orders / sessions) * 100).toFixed(2),
-        aov: Math.round(rev / orders),
-      });
-    }
-
-    const sum = (arr, k) => arr.reduce((s, x) => s + x[k], 0);
-    const totalRev = sum(series, 'revenue');
-    const totalSpend = sum(series, 'spend');
-    const totalSessions = sum(series, 'sessions');
-    const totalOrders = sum(series, 'orders');
-
-    const half = Math.floor(series.length / 2);
-    const recent = series.slice(half);
-    const prior  = series.slice(0, half);
-    const sumOver = (arr, k) => arr.reduce((s, x) => s + x[k], 0);
-    const dRev   = pct(sumOver(recent, 'revenue') * 2, sumOver(prior, 'revenue') * 2);
-    const dSp    = pct(sumOver(recent, 'spend') * 2, sumOver(prior, 'spend') * 2);
-    const dSess  = pct(sumOver(recent, 'sessions') * 2, sumOver(prior, 'sessions') * 2);
-    const dOrd   = pct(sumOver(recent, 'orders') * 2, sumOver(prior, 'orders') * 2);
-    const rRoas  = sumOver(recent, 'revenue') / Math.max(sumOver(recent, 'spend'), 1);
-    const pRoas  = sumOver(prior,  'revenue') / Math.max(sumOver(prior,  'spend'), 1);
-    const dRoas  = pct(rRoas, pRoas);
-    const rCvr   = (sumOver(recent, 'orders') / Math.max(sumOver(recent, 'sessions'), 1)) * 100;
-    const pCvr   = (sumOver(prior,  'orders') / Math.max(sumOver(prior,  'sessions'), 1)) * 100;
-    const dCvr   = pct(rCvr, pCvr);
-    const dAov   = pct(sumOver(recent, 'revenue') / Math.max(sumOver(recent, 'orders'), 1),
-                       sumOver(prior,  'revenue') / Math.max(sumOver(prior,  'orders'), 1));
-
-    const channels = [
-      { name: 'Meta Ads',    spend: totalSpend * 0.55, revenue: totalRev * 0.42, color: '#1877F2' },
-      { name: 'Google Ads',  spend: totalSpend * 0.30, revenue: totalRev * 0.28, color: '#4285F4' },
-      { name: 'Organic',     spend: 0,                 revenue: totalRev * 0.16, color: '#00FF88' },
-      { name: 'Email / SMS', spend: totalSpend * 0.05, revenue: totalRev * 0.10, color: '#9D6BFF' },
-      { name: 'Direct',      spend: 0,                 revenue: totalRev * 0.04, color: '#8A8A8A' },
-    ].map((c) => ({ ...c, roas: c.spend > 0 ? +(c.revenue / c.spend).toFixed(2) : null }));
-
-    const funnel = [
-      { label: 'Sessions',         count: totalSessions },
-      { label: 'Product views',    count: Math.round(totalSessions * 0.58) },
-      { label: 'Add to cart',      count: Math.round(totalSessions * 0.18) },
-      { label: 'Checkout started', count: Math.round(totalSessions * 0.064) },
-      { label: 'Purchased',        count: totalOrders },
-    ];
-
-    const products = [
-      { name: 'Single-Origin Espresso · 250g', sku: 'ESP-250', orders: Math.round(totalOrders * 0.18), revenue: Math.round(totalRev * 0.22), stock: 142 },
-      { name: 'Filter Coffee Bundle',          sku: 'FCB-BND', orders: Math.round(totalOrders * 0.14), revenue: Math.round(totalRev * 0.17), stock:  46 },
-      { name: 'Dark Roast · 500g',             sku: 'DKR-500', orders: Math.round(totalOrders * 0.12), revenue: Math.round(totalRev * 0.13), stock: 218 },
-      { name: 'Decaf · 250g',                  sku: 'DCF-250', orders: Math.round(totalOrders * 0.08), revenue: Math.round(totalRev * 0.08), stock:  19 },
-      { name: 'Subscription · Monthly',        sku: 'SUB-MTH', orders: Math.round(totalOrders * 0.07), revenue: Math.round(totalRev * 0.12), stock: null },
-    ];
-
-    return {
-      generated_at: new Date().toISOString(),
-      range,
-      kpis: {
-        revenue:  { value: totalRev,                                          delta: dRev,  sparkKey: 'revenue' },
-        ad_spend: { value: totalSpend,                                        delta: dSp,   sparkKey: 'spend' },
-        roas:     { value: +(totalRev / Math.max(totalSpend, 1)).toFixed(2),  delta: dRoas, sparkKey: 'roas' },
-        orders:   { value: totalOrders,                                       delta: dOrd,  sparkKey: 'orders' },
-        sessions: { value: totalSessions,                                     delta: dSess, sparkKey: 'sessions' },
-        cvr:      { value: +((totalOrders / Math.max(totalSessions, 1)) * 100).toFixed(2), delta: dCvr, sparkKey: 'cvr' },
-        aov:      { value: Math.round(totalRev / Math.max(totalOrders, 1)),   delta: dAov,  sparkKey: 'aov' },
-        ltv:      { value: Math.round((totalRev / Math.max(totalOrders, 1)) * 1.6), delta: 4.2, sparkKey: 'cvr' },
-      },
-      series, channels, funnel, products,
-      demo: true,
-    };
-  }
-
-  function pct(curr, prev) {
-    if (!prev || isNaN(prev)) return 0;
-    return +(((curr - prev) / prev) * 100).toFixed(1);
-  }
+  // Deterministic per-channel mini-spark — visual only, derived from the
+  // channel name. (No revenue assumptions here.)
   function mulberry32(seed) {
     return function () {
       seed |= 0; seed = seed + 0x6D2B79F5 | 0;
@@ -140,8 +49,9 @@
   }
 
   function kpiHtml({ key, label, icon, fmt, data }, series) {
-    const d = ui().fmtDelta(data.delta);
-    const sparkPts = series.map((s) => {
+    const isMissing = data == null || data.missing || data.value == null;
+    const d = isMissing ? null : ui().fmtDelta(data.delta);
+    const sparkPts = isMissing ? [] : series.map((s) => {
       if (key === 'revenue') return s.revenue;
       if (key === 'ad_spend') return s.spend;
       if (key === 'roas') return s.roas;
@@ -152,6 +62,18 @@
       return s.revenue;
     });
     const range = document.getElementById('rangeSel')?.value || '30d';
+    if (isMissing) {
+      return `
+        <div class="kpi-card" title="Connect another source to unlock ${label}">
+          <div class="kpi-head">
+            <div class="kpi-label">${label}</div>
+            <div class="kpi-icon"><span class="mono" style="font-size:12px;">${icon}</span></div>
+          </div>
+          <div class="kpi-value text-tertiary">—</div>
+          <div class="kpi-delta flat">Needs ${needsForKey(key)}</div>
+        </div>
+      `;
+    }
     return `
       <div class="kpi-card">
         <div class="kpi-head">
@@ -159,10 +81,16 @@
           <div class="kpi-icon"><span class="mono" style="font-size:12px;">${icon}</span></div>
         </div>
         <div class="kpi-value" data-countup="${data.value}" data-fmt="${key}">${fmt(data.value)}</div>
-        <div class="kpi-delta ${d.cls}">${d.arrow} ${d.text} <span class="vs">vs last ${range}</span></div>
+        <div class="kpi-delta ${d.cls}">${d.arrow} ${d.text} <span class="vs">vs prev ${range}</span></div>
         <svg class="kpi-spark" viewBox="0 0 100 36" preserveAspectRatio="none">${sparkPath(sparkPts)}</svg>
       </div>
     `;
+  }
+
+  function needsForKey(k) {
+    if (k === 'ad_spend' || k === 'roas') return 'Meta / Google Ads';
+    if (k === 'sessions' || k === 'cvr') return 'GA4 connection';
+    return 'more data';
   }
 
   function sparkPath(values) {
@@ -186,32 +114,27 @@
   function drawRevenueChart(canvas, series) {
     if (!window.Chart) return null;
     const labels = series.map((d) => d.date.slice(5));
-    return new Chart(canvas, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: 'Revenue',
-            data: series.map((d) => d.revenue),
-            borderColor: '#00FF88',
-            backgroundColor: gradient(canvas, 'rgba(0,255,136,0.22)', 'rgba(0,255,136,0)'),
-            fill: true, tension: 0.36,
-            borderWidth: 2, pointRadius: 0, pointHoverRadius: 5,
-            pointHoverBackgroundColor: '#00FF88', pointHoverBorderColor: '#0A0D11', pointHoverBorderWidth: 2,
-          },
-          {
-            label: 'Ad Spend',
-            data: series.map((d) => d.spend),
-            borderColor: '#9D6BFF',
-            backgroundColor: 'rgba(157,107,255,0.06)',
-            fill: false, tension: 0.36,
-            borderWidth: 2, borderDash: [4, 4], pointRadius: 0, pointHoverRadius: 4,
-          },
-        ],
-      },
-      options: chartOpts({ currency: true }),
-    });
+    const hasSpend = series.some((d) => Number(d.spend) > 0);
+    const datasets = [{
+      label: 'Revenue',
+      data: series.map((d) => d.revenue),
+      borderColor: '#00FF88',
+      backgroundColor: gradient(canvas, 'rgba(0,255,136,0.22)', 'rgba(0,255,136,0)'),
+      fill: true, tension: 0.36,
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 5,
+      pointHoverBackgroundColor: '#00FF88', pointHoverBorderColor: '#0A0D11', pointHoverBorderWidth: 2,
+    }];
+    if (hasSpend) {
+      datasets.push({
+        label: 'Ad Spend',
+        data: series.map((d) => d.spend),
+        borderColor: '#9D6BFF',
+        backgroundColor: 'rgba(157,107,255,0.06)',
+        fill: false, tension: 0.36,
+        borderWidth: 2, borderDash: [4, 4], pointRadius: 0, pointHoverRadius: 4,
+      });
+    }
+    return new Chart(canvas, { type: 'line', data: { labels, datasets }, options: chartOpts({ currency: true }) });
   }
   function drawRoasChart(canvas, series) {
     if (!window.Chart) return null;

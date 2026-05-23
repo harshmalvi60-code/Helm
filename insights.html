@@ -210,23 +210,25 @@
       totalMs: 4800,
       onDone: async () => {
         try {
+          const snap = await window.HelmDashboard.loadSnapshot('30d');
+          if (!snap || !snap.connected) {
+            modal.classList.add('hidden');
+            window.HelmUI.toast('Connect Shopify first', 'warning', 3000);
+            window.location.href = '/dashboard';
+            return;
+          }
           const sb = await window.HelmSupabase.getClient();
           const { data: existing } = await sb.from('insights').select().eq('user_id', user.id);
           for (const row of existing || []) await sb.from('insights').delete().eq('id', row.id);
 
-          const fresh = await window.HelmInsightsGen.generateAll();
+          const fresh = window.HelmInsightsGen.buildInsights(snap);
           for (const ins of fresh) await sb.from('insights').insert({ ...ins, user_id: user.id });
 
-          const snap = await window.HelmDashboard.loadSnapshot('30d');
-          const metrics = {
-            revenue: snap.kpis.revenue.value, ad_spend: snap.kpis.ad_spend.value, roas: snap.kpis.roas.value,
-            sessions: snap.kpis.sessions.value, orders: snap.kpis.orders.value, cvr: snap.kpis.cvr.value, aov: snap.kpis.aov.value,
-          };
-          const report = window.HelmInsightsGen.generateReport(fresh, metrics);
+          const report = window.HelmInsightsGen.generateReport(fresh, snap);
           await sb.from('reports').insert({ user_id: user.id, kind: 'weekly', ...report });
 
           modal.classList.add('hidden');
-          window.HelmUI.toast('Fresh insights generated', 'success');
+          window.HelmUI.toast('Fresh insights generated from your live Shopify data', 'success');
           await load();
         } catch (err) {
           modal.classList.add('hidden');

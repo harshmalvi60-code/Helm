@@ -170,6 +170,38 @@ begin
   end loop;
 end $$;
 
+-- ============ TOKEN SECURITY ============
+-- Hide secret token columns from the anon + authenticated roles so they
+-- are only readable via the service-role key (used server-side in
+-- /api/* routes). Without this, RLS would still expose tokens to the
+-- end user's own session.
+revoke select on public.integrations from anon, authenticated;
+grant  select (id, user_id, provider, status, account_label, account_id, scopes,
+               metadata, last_synced_at, connected_at, created_at, updated_at)
+       on public.integrations to authenticated;
+-- INSERT/UPDATE/DELETE still flow through RLS policies above; tokens are
+-- only ever written by the service role in /api/integrations/<p>/callback.
+grant insert, update, delete on public.integrations to authenticated;
+
+-- ============ NOTIFICATIONS ============
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  severity text not null default 'info' check (severity in ('critical','warning','success','info')),
+  kind text,
+  title text not null,
+  body text,
+  read boolean default false,
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamptz default now()
+);
+create index if not exists notifications_user_created_idx on public.notifications(user_id, created_at desc);
+alter table public.notifications enable row level security;
+drop policy if exists notifications_select on public.notifications;
+create policy notifications_select on public.notifications for select using (auth.uid() = user_id);
+drop policy if exists notifications_modify on public.notifications;
+create policy notifications_modify on public.notifications for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 -- ============ HANDY VIEW: rolling 30d ============
 create or replace view public.analytics_30d as
   select

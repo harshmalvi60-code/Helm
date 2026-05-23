@@ -172,8 +172,8 @@
 
       <div class="flex items-center mt-5" style="font-size:13px;color:var(--text-secondary);">
         <span><span id="connectedCount">0</span> of <span id="totalCount">5</span> connected</span>
-        <span class="text-tertiary mx-2" style="margin: 0 8px;">·</span>
-        <span class="text-tertiary">Minimum: Shopify or Meta Ads</span>
+        <span class="text-tertiary" style="margin: 0 8px;">·</span>
+        <span class="text-tertiary">Shopify is required to see live data</span>
       </div>
 
       <div class="wizard-foot">
@@ -191,8 +191,8 @@
       const connected = Object.values(conns).filter((c) => c.status === 'connected');
       el.querySelector('#connectedCount').textContent = connected.length;
       el.querySelector('#totalCount').textContent = window.HelmIntegrations.CATALOG.length;
-      const hasCore = connected.some((c) => c.provider === 'shopify' || c.provider === 'meta');
-      el.querySelector('#nextBtn').disabled = !hasCore;
+      const hasShopify = connected.some((c) => c.provider === 'shopify');
+      el.querySelector('#nextBtn').disabled = !hasShopify;
 
       grid.querySelectorAll('.js-connect').forEach((b) => b.addEventListener('click', async () => {
         b.disabled = true; b.innerHTML = '<span class="spinner"></span> Connecting…';
@@ -234,16 +234,15 @@
         totalMs: 5200,
         onDone: async () => {
           try {
-            const fresh = await window.HelmInsightsGen.generateAll();
-            for (const ins of fresh) await sb.from('insights').insert({ ...ins, user_id: user.id });
+            // Insights pull from /api/shopify/analytics → real data only.
             const snap = await window.HelmDashboard.loadSnapshot('30d');
-            const metrics = {
-              revenue: snap.kpis.revenue.value, ad_spend: snap.kpis.ad_spend.value, roas: snap.kpis.roas.value,
-              sessions: snap.kpis.sessions.value, orders: snap.kpis.orders.value, cvr: snap.kpis.cvr.value, aov: snap.kpis.aov.value,
-            };
-            const report = window.HelmInsightsGen.generateReport(fresh, metrics);
-            await sb.from('reports').insert({ user_id: user.id, kind: 'weekly', ...report });
-          } catch (_) {}
+            if (snap && snap.connected) {
+              const fresh = window.HelmInsightsGen.buildInsights(snap);
+              for (const ins of fresh) await sb.from('insights').insert({ ...ins, user_id: user.id });
+              const report = window.HelmInsightsGen.generateReport(fresh, snap);
+              await sb.from('reports').insert({ user_id: user.id, kind: 'weekly', ...report });
+            }
+          } catch (e) { console.warn('analysis after onboarding failed', e); }
           window.location.href = '/dashboard?onboarded=1';
         },
       });
