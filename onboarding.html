@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Connect your stack · HELM</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body class="app-bg">
+
+<div id="app-root">
+  <div class="onb-wrap">
+    <a href="/dashboard" class="auth-logo"><span class="mark"></span><span>HELM</span></a>
+
+    <div class="onb-step-list" style="margin-top:30px;">
+      <div class="onb-step done" id="step-1"></div>
+      <div class="onb-step active" id="step-2"></div>
+      <div class="onb-step" id="step-3"></div>
+    </div>
+
+    <div class="page-head">
+      <div>
+        <h1>Connect your growth stack</h1>
+        <p class="subtitle">HELM needs read access to your sales, ad and analytics tools so it can spot revenue leaks. We never write, never run ads, never email your customers.</p>
+      </div>
+    </div>
+
+    <div id="alert" class="alert hidden">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      <span id="alertText"></span>
+    </div>
+
+    <div class="integ-grid" id="integGrid">
+      <!-- rendered by JS -->
+    </div>
+
+    <div class="flex justify-between items-center mt-4" style="margin-top:32px;gap:12px;flex-wrap:wrap;">
+      <div class="text-muted" style="font-size:13px;">
+        <span id="connectedCount">0</span> of <span id="totalCount">5</span> connected
+        · <span class="text-tertiary">Minimum: 1 of Shopify + Meta Ads</span>
+      </div>
+      <div class="flex gap-3">
+        <a href="/dashboard" class="btn btn-subtle">Skip for now</a>
+        <button class="btn btn-primary" id="continueBtn" disabled>Run first analysis →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/js/supabase.js"></script>
+<script src="/assets/js/ui.js"></script>
+<script src="/assets/js/integrations.js"></script>
+<script src="/assets/js/app-shell.js"></script>
+<script>
+(async function () {
+  // Don't wrap in sidebar — onboarding is its own flow. Just gate auth.
+  const user = await window.HelmSupabase.requireAuth();
+  if (!user) return;
+
+  const grid = document.getElementById('integGrid');
+  const continueBtn = document.getElementById('continueBtn');
+  document.getElementById('totalCount').textContent = window.HelmIntegrations.CATALOG.length;
+
+  async function render() {
+    const conns = await window.HelmIntegrations.listConnections(user.id);
+    grid.innerHTML = window.HelmIntegrations.CATALOG.map((i) => window.HelmIntegrations.renderCard(i, conns[i.id])).join('');
+    const connected = Object.values(conns).filter((c) => c.status === 'connected');
+    document.getElementById('connectedCount').textContent = connected.length;
+    const hasOneCore = connected.some((c) => c.provider === 'shopify' || c.provider === 'meta');
+    continueBtn.disabled = !hasOneCore;
+
+    grid.querySelectorAll('.js-connect').forEach((b) => b.addEventListener('click', async () => {
+      b.disabled = true; b.innerHTML = '<span class="spinner"></span> Connecting…';
+      try { await window.HelmIntegrations.startConnect(b.dataset.p); await render(); }
+      catch (e) { window.HelmUI.toast(e.message || 'Connect failed', 'error'); b.disabled = false; b.textContent = 'Connect'; }
+    }));
+    grid.querySelectorAll('.js-disconnect').forEach((b) => b.addEventListener('click', async () => {
+      if (!confirm('Disconnect ' + b.dataset.p + '?')) return;
+      await window.HelmIntegrations.disconnect(b.dataset.p, user.id);
+      await render();
+    }));
+    grid.querySelectorAll('.js-sync').forEach((b) => b.addEventListener('click', async () => {
+      b.disabled = true; b.innerHTML = '<span class="spinner"></span> Syncing…';
+      try {
+        await window.HelmUI.apiFetch('/api/data/sync', { method: 'POST', body: JSON.stringify({ provider: b.dataset.p }) });
+        window.HelmUI.toast('Sync queued', 'success');
+      } catch (e) { window.HelmUI.toast(e.message || 'Sync failed', 'error'); }
+      b.disabled = false; b.textContent = 'Resync now';
+    }));
+  }
+
+  continueBtn.addEventListener('click', async () => {
+    continueBtn.disabled = true;
+    continueBtn.innerHTML = '<span class="spinner"></span> Running first analysis…';
+    try {
+      await window.HelmUI.apiFetch('/api/data/sync', { method: 'POST', body: JSON.stringify({ initial: true }) }).catch(() => {});
+      await window.HelmUI.apiFetch('/api/ai/insights', { method: 'POST', body: JSON.stringify({ mode: 'initial' }) }).catch(() => {});
+    } catch (_) {}
+    location.href = '/dashboard?onboarded=1';
+  });
+
+  // Re-render when OAuth returns
+  if (window.HelmUI.getParam('connected')) {
+    window.HelmUI.toast(window.HelmUI.getParam('connected') + ' connected', 'success');
+    window.HelmUI.setParam('connected', null);
+  }
+  if (window.HelmUI.getParam('error')) {
+    document.getElementById('alert').classList.remove('hidden');
+    document.getElementById('alert').classList.add('danger');
+    document.getElementById('alertText').textContent = 'Could not connect: ' + window.HelmUI.getParam('error');
+  }
+
+  await render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard · HELM</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body class="app-bg">
+
+<div id="app-root">
+  <div class="page-head">
+    <div>
+      <h1>Dashboard</h1>
+      <p class="subtitle">Your store, channels and ad performance at a glance. <span id="lastSync" class="text-tertiary mono"></span></p>
+    </div>
+    <div class="page-actions">
+      <select class="form-select" id="rangeSel" style="width:auto;">
+        <option value="7d">Last 7 days</option>
+        <option value="30d" selected>Last 30 days</option>
+        <option value="90d">Last 90 days</option>
+      </select>
+      <button class="btn btn-subtle" id="refreshBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+        Sync
+      </button>
+      <a href="/insights" class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        View AI Insights
+      </a>
+    </div>
+  </div>
+
+  <div id="trialAlert" class="alert hidden"></div>
+  <div id="connectAlert" class="alert hidden"></div>
+
+  <div class="kpi-grid" id="kpiRow"></div>
+  <div class="kpi-grid" id="kpiRow2" style="margin-top:0;"></div>
+
+  <div class="grid-2 mt-4">
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Revenue vs Ad Spend</div>
+          <div class="panel-sub">Daily totals across all connected channels</div>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="revChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Revenue by Channel</div>
+          <div class="panel-sub">Attribution mix (last sync)</div>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="channelChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2 mt-4">
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Conversion Funnel</div>
+          <div class="panel-sub">Sessions → purchase, last period</div>
+        </div>
+      </div>
+      <div id="funnel"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">ROAS Trend</div>
+          <div class="panel-sub">Paid efficiency over time</div>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="roasChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2 mt-4">
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Channel Performance</div>
+          <div class="panel-sub">Spend, revenue and ROAS by source</div>
+        </div>
+        <a href="/insights" class="btn btn-subtle btn-sm">Why is Meta down?</a>
+      </div>
+      <div id="channelTable"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Latest Insights</div>
+          <div class="panel-sub">AI-generated, prioritized by revenue impact</div>
+        </div>
+        <a href="/insights" class="btn btn-subtle btn-sm">All →</a>
+      </div>
+      <div id="latestInsights" class="insights-feed">
+        <div class="insight">
+          <div class="skeleton skeleton-line med"></div>
+          <div class="skeleton skeleton-line long"></div>
+          <div class="skeleton skeleton-line short"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="/assets/js/supabase.js"></script>
+<script src="/assets/js/ui.js"></script>
+<script src="/assets/js/dashboard.js"></script>
+<script src="/assets/js/integrations.js"></script>
+<script src="/assets/js/app-shell.js"></script>
+<script>
+(async function () {
+  const ctx = await window.HelmShell.mount({ active: '/dashboard' });
+  if (!ctx) return;
+  const { user } = ctx;
+
+  let charts = {};
+
+  async function refresh(range) {
+    const snap = await window.HelmDashboard.loadSnapshot(range);
+    document.getElementById('kpiRow').innerHTML = window.HelmDashboard.renderKpis(snap.kpis);
+    document.getElementById('kpiRow2').innerHTML = window.HelmDashboard.renderKpiRow2(snap.kpis);
+    document.getElementById('lastSync').textContent = '· Synced ' + window.HelmUI.relativeTime(snap.generated_at);
+
+    Object.values(charts).forEach((c) => c?.destroy?.());
+    charts.rev = window.HelmDashboard.drawRevenueChart(document.getElementById('revChart'), snap.series);
+    charts.roas = window.HelmDashboard.drawRoasChart(document.getElementById('roasChart'), snap.series);
+    charts.channel = window.HelmDashboard.drawChannelChart(document.getElementById('channelChart'), snap.channels);
+    window.HelmDashboard.renderFunnel(document.getElementById('funnel'), snap.funnel);
+    window.HelmDashboard.renderChannelTable(document.getElementById('channelTable'), snap.channels);
+  }
+
+  async function loadLatestInsights() {
+    try {
+      const sb = await window.HelmSupabase.getClient();
+      const { data } = await sb.from('insights').select().eq('user_id', user.id).order('created_at', { ascending: false }).limit(3);
+      const target = document.getElementById('latestInsights');
+      if (!data || !data.length) {
+        target.innerHTML = `
+          <div class="insight">
+            <div class="insight-title">Run your first AI analysis</div>
+            <div class="insight-body">Connect Shopify + Meta and HELM will surface revenue leaks, ROAS dips and creative fatigue automatically.</div>
+            <div class="insight-actions"><a href="/insights" class="btn btn-primary btn-sm">Generate insights</a></div>
+          </div>`;
+        return;
+      }
+      target.innerHTML = data.map((i) => `
+        <div class="insight sev-${i.severity || 'info'}">
+          <div class="insight-head">
+            <span class="tag ${i.severity || 'info'}">${(i.category || 'insight').toUpperCase()}</span>
+            <span class="text-tertiary mono" style="font-size:11px;">${window.HelmUI.relativeTime(i.created_at)}</span>
+          </div>
+          <div class="insight-title">${escape(i.title)}</div>
+          <div class="insight-body">${escape(i.summary || '')}</div>
+        </div>
+      `).join('');
+    } catch (e) {
+      console.warn('insights load failed', e);
+    }
+  }
+
+  async function checkConnections() {
+    const conns = await window.HelmIntegrations.listConnections(user.id);
+    const connected = Object.values(conns).filter((c) => c.status === 'connected');
+    if (!connected.length) {
+      const a = document.getElementById('connectAlert');
+      a.className = 'alert warning';
+      a.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2v6"/><path d="M15 2v6"/><path d="M7 8h10v4a5 5 0 0 1-10 0z"/><path d="M12 17v5"/></svg>
+        <span>No data sources connected yet — these numbers are sample data.</span>
+        <a href="/onboarding" class="btn btn-primary btn-sm" style="margin-left:auto;">Connect now</a>`;
+    }
+  }
+
+  function escape(s) {
+    return String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+
+  document.getElementById('rangeSel').addEventListener('change', (e) => refresh(e.target.value));
+  document.getElementById('refreshBtn').addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      await window.HelmUI.apiFetch('/api/data/sync', { method: 'POST', body: JSON.stringify({}) }).catch(() => {});
+      await refresh(document.getElementById('rangeSel').value);
+      window.HelmUI.toast('Data refreshed', 'success', 1600);
+    } finally { e.currentTarget.disabled = false; }
+  });
+
+  if (window.HelmUI.getParam('onboarded') === '1') {
+    window.HelmUI.toast('Stack connected — HELM is analyzing your data', 'success', 3000);
+    window.HelmUI.setParam('onboarded', null);
+  }
+
+  await Promise.all([refresh('30d'), loadLatestInsights(), checkConnections()]);
+})();
+</script>
+</body>
+</html>

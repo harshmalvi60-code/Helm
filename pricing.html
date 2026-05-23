@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pricing · HELM</title>
+<meta name="description" content="Simple, transparent pricing. Start with a 14-day free trial." />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body class="app-bg">
+
+<nav style="position:sticky;top:0;backdrop-filter:blur(20px);background:rgba(5,5,5,0.72);border-bottom:1px solid var(--border);z-index:50;">
+  <div style="max-width:1080px;margin:0 auto;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;">
+    <a href="/" class="auth-logo" style="margin:0;"><span class="mark"></span><span>HELM</span></a>
+    <div class="flex gap-3 items-center">
+      <a href="/login" class="text-muted" style="font-size:14px;">Sign in</a>
+      <a href="/signup" class="btn btn-primary btn-sm">Start free trial</a>
+    </div>
+  </div>
+</nav>
+
+<main style="max-width:1100px;margin:0 auto;padding:60px 24px 80px;position:relative;z-index:1;">
+  <div style="text-align:center;margin-bottom:48px;">
+    <span class="tag neutral" style="margin-bottom:14px;display:inline-block;">PRICING</span>
+    <h1 style="font-size:42px;font-weight:600;letter-spacing:-0.02em;margin-bottom:12px;">Pick what fits today. Upgrade when you scale.</h1>
+    <p class="text-muted" style="font-size:16px;max-width:600px;margin:0 auto;">All plans include a 14-day free trial. No credit card required.</p>
+  </div>
+
+  <div class="flex items-center justify-between" style="max-width:480px;margin:0 auto 36px;background:var(--bg-card);border:1px solid var(--border);border-radius:100px;padding:6px;">
+    <button class="btn btn-primary btn-sm" id="billMonthly" style="flex:1;border-radius:100px;">Monthly</button>
+    <button class="btn btn-sm" id="billYearly" style="flex:1;border-radius:100px;background:transparent;color:var(--text-secondary);">Yearly <span class="text-accent" style="margin-left:4px;">−20%</span></button>
+  </div>
+
+  <div class="pricing-grid" id="pricingGrid"></div>
+
+  <div class="alert" style="margin-top:48px;max-width:760px;margin-left:auto;margin-right:auto;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+    <span>Need a custom contract, SOC2 / DPA, or multi-brand? <a href="mailto:hello@helm.ai" class="text-accent">Talk to founders →</a></span>
+  </div>
+
+  <div style="margin-top:80px;max-width:760px;margin-left:auto;margin-right:auto;">
+    <h2 style="font-size:24px;font-weight:600;margin-bottom:20px;text-align:center;">FAQs</h2>
+    <div id="faqs"></div>
+  </div>
+</main>
+
+<script src="/assets/js/supabase.js"></script>
+<script src="/assets/js/ui.js"></script>
+<script>
+const PLANS = [
+  {
+    tier: 'Starter', plan: 'starter',
+    monthly: 4900, yearly: 3900,
+    desc: 'For founders just plugging HELM in.',
+    features: [
+      'Up to ₹15L monthly GMV',
+      '2 connected sources',
+      'Daily AI insights',
+      'Weekly growth report',
+      'Email support',
+    ],
+    cta: 'Start free trial', href: '/signup',
+  },
+  {
+    tier: 'Growth', plan: 'growth', featured: true,
+    monthly: 14900, yearly: 11900,
+    desc: 'The default for scaling D2C brands.',
+    features: [
+      'Up to ₹1Cr monthly GMV',
+      'All integrations',
+      'Real-time alerts (Slack + email)',
+      'Creative fatigue detection',
+      'Cohort + LTV analysis',
+      'Priority support',
+    ],
+    cta: 'Start free trial', href: '/signup?plan=growth',
+  },
+  {
+    tier: 'Scale', plan: 'scale',
+    monthly: 39900, yearly: 31900,
+    desc: 'Multi-brand operators and category leaders.',
+    features: [
+      'Unlimited GMV',
+      'Multi-store workspace',
+      'Custom AI workflows',
+      'Dedicated growth analyst',
+      'SOC2 & DPA available',
+      'Slack channel with founders',
+    ],
+    cta: 'Contact sales', href: 'mailto:hello@helm.ai',
+  },
+];
+
+const Check = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+let yearly = false;
+
+function render() {
+  const grid = document.getElementById('pricingGrid');
+  grid.innerHTML = PLANS.map((p) => `
+    <div class="price-card ${p.featured ? 'featured' : ''}">
+      ${p.featured ? '<span class="featured-label">Most popular</span>' : ''}
+      <div class="price-tier">${p.tier}</div>
+      <div class="price-amount">₹${(yearly ? p.yearly : p.monthly).toLocaleString('en-IN')}<span class="unit"> /mo</span></div>
+      <div class="price-desc">${p.desc}${yearly ? ' Billed annually.' : ''}</div>
+      <ul class="price-features">${p.features.map((f) => `<li>${Check}<span>${f}</span></li>`).join('')}</ul>
+      <a href="${p.href}" class="btn ${p.featured ? 'btn-primary' : 'btn-ghost'} btn-block" data-plan="${p.plan}">${p.cta}</a>
+    </div>
+  `).join('');
+}
+
+function faqs() {
+  const items = [
+    ['How does the 14-day trial work?', 'You get full access on every plan, no card required. We send a heads-up 3 days before it ends.'],
+    ['Do you need write access to my store?', 'No. HELM is read-only. We never run ads, post emails, or change products. You stay in control.'],
+    ['Where is my data stored?', 'In encrypted Postgres on Supabase (EU/US regions). Tokens are stored encrypted at rest; you can revoke them any time.'],
+    ['Can I bring my own AI key?', 'On Scale you can BYO Claude or OpenAI keys for unlimited generations and zero rate-limits.'],
+  ];
+  return items.map(([q, a]) => `
+    <details style="border-bottom:1px solid var(--border);padding:18px 4px;">
+      <summary style="cursor:pointer;font-weight:600;font-size:15px;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+        <span>${q}</span><span class="text-tertiary mono">+</span>
+      </summary>
+      <p style="margin-top:10px;color:var(--text-secondary);font-size:14px;line-height:1.7;">${a}</p>
+    </details>
+  `).join('');
+}
+
+document.getElementById('billMonthly').addEventListener('click', () => {
+  yearly = false;
+  document.getElementById('billMonthly').className = 'btn btn-primary btn-sm';
+  document.getElementById('billMonthly').style.borderRadius = '100px';
+  document.getElementById('billYearly').className = 'btn btn-sm';
+  document.getElementById('billYearly').style.cssText = 'flex:1;border-radius:100px;background:transparent;color:var(--text-secondary);';
+  render();
+});
+document.getElementById('billYearly').addEventListener('click', () => {
+  yearly = true;
+  document.getElementById('billYearly').className = 'btn btn-primary btn-sm';
+  document.getElementById('billYearly').style.borderRadius = '100px';
+  document.getElementById('billMonthly').className = 'btn btn-sm';
+  document.getElementById('billMonthly').style.cssText = 'flex:1;border-radius:100px;background:transparent;color:var(--text-secondary);';
+  render();
+});
+
+render();
+document.getElementById('faqs').innerHTML = faqs();
+
+// If user is signed in, switch CTAs to "Upgrade"
+(async function () {
+  const u = await window.HelmSupabase.currentUser();
+  if (!u) return;
+  document.querySelectorAll('[data-plan]').forEach((b) => {
+    if (b.dataset.plan !== 'scale') {
+      b.textContent = 'Upgrade to ' + b.dataset.plan.charAt(0).toUpperCase() + b.dataset.plan.slice(1);
+      b.href = '/settings?plan=' + b.dataset.plan;
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Insights · HELM</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body class="app-bg">
+
+<div id="app-root">
+  <div class="page-head">
+    <div>
+      <h1>AI Insights</h1>
+      <p class="subtitle">HELM analyzes your connected data continuously and surfaces what's costing you money — and what to fix next.</p>
+    </div>
+    <div class="page-actions">
+      <select class="form-select" id="filterSev" style="width:auto;">
+        <option value="">All severities</option>
+        <option value="critical">Critical</option>
+        <option value="warning">Warning</option>
+        <option value="opportunity">Opportunity</option>
+        <option value="info">Info</option>
+      </select>
+      <button class="btn btn-primary" id="generateBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Generate fresh report
+      </button>
+    </div>
+  </div>
+
+  <div class="alert hidden" id="genAlert"></div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Weekly AI Report</div>
+          <div class="panel-sub">Synthesized from your last sync</div>
+        </div>
+        <span class="text-tertiary mono" style="font-size:11px;" id="reportDate">—</span>
+      </div>
+      <div id="weeklyReport">
+        <div class="skeleton skeleton-line long"></div>
+        <div class="skeleton skeleton-line long"></div>
+        <div class="skeleton skeleton-line med"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Growth Recommendations</div>
+          <div class="panel-sub">Highest-leverage actions for this week</div>
+        </div>
+      </div>
+      <ol id="recs" style="padding-left:18px;font-size:13.5px;color:var(--text-secondary);line-height:1.7;">
+        <li class="skeleton skeleton-line med"></li>
+        <li class="skeleton skeleton-line long"></li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <div class="panel-title mb-3" style="margin-top:32px;">Insight Feed</div>
+    <div id="insightsFeed" class="insights-feed"></div>
+  </div>
+</div>
+
+<script src="/assets/js/supabase.js"></script>
+<script src="/assets/js/ui.js"></script>
+<script src="/assets/js/app-shell.js"></script>
+<script>
+(async function () {
+  const ctx = await window.HelmShell.mount({ active: '/insights' });
+  if (!ctx) return;
+  const { user } = ctx;
+
+  async function load() {
+    const sb = await window.HelmSupabase.getClient();
+    const sev = document.getElementById('filterSev').value;
+    let q = sb.from('insights').select().eq('user_id', user.id).order('created_at', { ascending: false }).limit(40);
+    if (sev) q = q.eq('severity', sev);
+    const { data } = await q;
+    renderFeed(data || []);
+
+    const { data: reports } = await sb.from('reports').select().eq('user_id', user.id).order('created_at', { ascending: false }).limit(1);
+    if (reports && reports[0]) renderReport(reports[0]);
+  }
+
+  function renderFeed(items) {
+    const target = document.getElementById('insightsFeed');
+    if (!items.length) {
+      target.innerHTML = `
+        <div class="panel" style="text-align:center;padding:40px 24px;">
+          <div class="panel-title mb-2">No insights yet</div>
+          <p class="text-muted mb-3" style="font-size:13px;">Click <b>Generate fresh report</b> to have HELM analyze your data with Claude.</p>
+        </div>`;
+      return;
+    }
+    target.innerHTML = items.map((i) => `
+      <div class="insight sev-${i.severity || 'info'}">
+        <div class="insight-head">
+          <span class="tag ${i.severity || 'info'}">${(i.category || 'insight').toUpperCase()}</span>
+          <span class="text-tertiary mono" style="font-size:11px;">${window.HelmUI.relativeTime(i.created_at)}</span>
+          ${i.impact_inr ? `<span class="tag neutral" style="margin-left:auto;">Impact: ${window.HelmUI.fmtCurrency(i.impact_inr)}/mo</span>` : ''}
+        </div>
+        <div class="insight-title">${esc(i.title)}</div>
+        <div class="insight-body">${esc(i.summary || '')}</div>
+        ${i.recommendation ? `<div class="insight-body mt-2"><b style="color:var(--text-primary);">Recommended action:</b> ${esc(i.recommendation)}</div>` : ''}
+        ${i.metrics ? renderMetrics(i.metrics) : ''}
+        <div class="insight-actions">
+          <button class="btn btn-subtle btn-sm js-dismiss" data-id="${i.id}">Dismiss</button>
+          <button class="btn btn-ghost btn-sm js-snooze" data-id="${i.id}">Snooze 7d</button>
+        </div>
+      </div>
+    `).join('');
+    target.querySelectorAll('.js-dismiss').forEach((b) => b.addEventListener('click', async () => {
+      const sb = await window.HelmSupabase.getClient();
+      await sb.from('insights').delete().eq('id', b.dataset.id);
+      window.HelmUI.toast('Dismissed', 'success', 1400);
+      await load();
+    }));
+  }
+
+  function renderMetrics(m) {
+    try {
+      const obj = typeof m === 'string' ? JSON.parse(m) : m;
+      const entries = Object.entries(obj || {});
+      if (!entries.length) return '';
+      return `<div class="insight-meta">${entries.map(([k, v]) => `<span><b style="color:var(--text-secondary);">${esc(k)}:</b> ${esc(String(v))}</span>`).join('')}</div>`;
+    } catch (_) { return ''; }
+  }
+
+  function renderReport(r) {
+    document.getElementById('reportDate').textContent = window.HelmUI.relativeTime(r.created_at);
+    const md = r.summary_md || r.summary || 'No summary available.';
+    document.getElementById('weeklyReport').innerHTML = `<div style="font-size:14px;color:var(--text-secondary);line-height:1.75;">${mdToHtml(md)}</div>`;
+    const recs = r.recommendations ? (typeof r.recommendations === 'string' ? JSON.parse(r.recommendations) : r.recommendations) : [];
+    document.getElementById('recs').innerHTML = (recs.length ? recs : ['Connect more data sources to unlock recommendations.']).map((x) => `<li>${esc(typeof x === 'string' ? x : x.text || JSON.stringify(x))}</li>`).join('');
+  }
+
+  function esc(s) { return String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+  function mdToHtml(s) {
+    return esc(s)
+      .replace(/^### (.+)$/gm, '<h4 style="color:var(--text-primary);margin:14px 0 6px;">$1</h4>')
+      .replace(/^## (.+)$/gm, '<h3 style="color:var(--text-primary);margin:16px 0 8px;font-size:15px;">$1</h3>')
+      .replace(/\*\*(.+?)\*\*/g, '<b style="color:var(--text-primary);">$1</b>')
+      .replace(/\n/g, '<br>');
+  }
+
+  document.getElementById('filterSev').addEventListener('change', load);
+
+  document.getElementById('generateBtn').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Analyzing with Claude…';
+    try {
+      await window.HelmUI.apiFetch('/api/ai/insights', { method: 'POST', body: JSON.stringify({ mode: 'fresh' }) });
+      window.HelmUI.toast('Fresh insights generated', 'success');
+      await load();
+    } catch (err) {
+      window.HelmUI.toast(err.message || 'Could not generate insights', 'error', 5000);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Generate fresh report';
+    }
+  });
+
+  await load();
+})();
+</script>
+</body>
+</html>

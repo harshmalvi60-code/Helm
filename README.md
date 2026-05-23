@@ -2,117 +2,138 @@
 
 **The AI Growth Operator for D2C Brands.**
 
-Single-page landing site. Zero dependencies. Deploys to Vercel in 90 seconds.
+HELM connects to Shopify, Meta Ads, Google Analytics, Google Ads and Klaviyo,
+detects where you're leaking revenue, and ships you a prioritized list of
+fixes every week — powered by Claude.
 
 ---
 
-## Quick deploy (zero-config)
+## Stack at a glance
 
-This repo is a pure static site. Vercel auto-detects and ships it. No build step.
+- **Frontend:** Vanilla HTML + CSS + JS (zero build step). Supabase JS
+  client and Chart.js are loaded from CDN. Every page is hand-written for
+  fast first paint and trivial debugging.
+- **Auth:** Supabase Auth (email + Google OAuth).
+- **Database:** Supabase Postgres with row-level security so each tenant
+  only ever sees their own rows. Schema: `supabase/schema.sql`.
+- **Server:** Vercel serverless Node.js 20 functions in `/api`. No npm deps.
+- **AI:** Anthropic Messages API (Claude Sonnet 4.6) via direct HTTP.
+- **Integrations:** Real OAuth flows for Shopify, Meta, Google (GA4 + Ads)
+  and Klaviyo. State is HMAC-signed and stored in a short-lived cookie.
 
-### Step 1 — Push to GitHub
+## Folder map
 
-If you have `git` installed locally:
+```
+.
+├── index.html              # Marketing landing (orange-accent dark theme)
+├── login.html / signup.html
+├── onboarding.html         # Connect Shopify / Meta / GA / Klaviyo
+├── dashboard.html          # KPIs, ROAS, funnel, revenue/channel charts
+├── insights.html           # AI insights feed + weekly report
+├── settings.html           # Profile, integrations, alerts, subscription
+├── pricing.html            # 3-tier pricing + FAQ
+├── assets/
+│   ├── css/app.css
+│   └── js/{supabase,ui,app-shell,dashboard,insights,integrations}.js
+├── api/
+│   ├── config.js           # Public Supabase keys + capability flags
+│   ├── ai/insights.js      # Claude → insights + weekly report
+│   ├── data/snapshot.js    # Aggregated dashboard data
+│   ├── data/sync.js        # Per-provider data sync
+│   └── integrations/<p>/{install,callback}.js
+├── lib/                    # Server helpers (Supabase REST, Claude, OAuth)
+├── supabase/schema.sql     # DB schema + RLS policies
+├── .env.example
+├── vercel.json
+└── package.json
+```
 
+---
+
+## Quick start
+
+### 1. Local dev
 ```bash
-git init
-git add .
-git commit -m "Initial commit: HELM landing"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/helm-landing.git
-git push -u origin main
+cp .env.example .env.local
+npm i -g vercel
+vercel dev
 ```
+Open http://localhost:3000. With env vars blank, HELM falls into **demo
+mode** — auth/persistence are local-only and the dashboard shows
+synthesized data so you can navigate the whole product immediately.
 
-**Or use GitHub's web UI (no terminal):**
+### 2. Set up Supabase
+1. Create a project at https://supabase.com.
+2. SQL Editor → paste the contents of `supabase/schema.sql` → Run.
+3. Authentication → Providers → enable Email + Google.
+4. Drop the keys into `.env.local` (and into Vercel for prod):
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
 
-1. Go to [github.com/new](https://github.com/new)
-2. Name the repo `helm-landing`. Set it private or public — your call.
-3. Don't initialize with a README (we have one).
-4. Click **Create repository**.
-5. On the next screen, click **"uploading an existing file"**.
-6. Drag every file from this folder into the upload area:
-   - `index.html`
-   - `favicon.svg`
-   - `vercel.json`
-   - `robots.txt`
-   - `.gitignore`
-   - `README.md`
-7. Commit changes.
+### 3. Enable AI
+Add `ANTHROPIC_API_KEY`. Default model is `claude-sonnet-4-6` — override
+with `ANTHROPIC_MODEL` if needed.
 
-### Step 2 — Deploy on Vercel
+### 4. Wire up real integrations
+For each provider you want live, set the matching env vars in
+`.env.example`. Until you do, the **Connect** button on `/onboarding`
+runs in demo mode (instantly marks the connection as live and lets you
+continue).
 
-1. Go to [vercel.com/new](https://vercel.com/new)
-2. Sign in with GitHub if you haven't already.
-3. Find `helm-landing` in your repo list and click **Import**.
-4. **Framework Preset:** leave as "Other" (Vercel auto-detects static).
-5. **Root Directory:** leave as `./`
-6. **Build Command:** leave empty.
-7. **Output Directory:** leave empty.
-8. Click **Deploy**.
+Callback URLs to register in each provider's app settings:
 
-That's it. You'll have a live URL like `helm-landing-yourname.vercel.app` within 30 seconds.
+| Provider     | Callback URL                                                |
+|--------------|-------------------------------------------------------------|
+| Shopify      | `https://your-domain/api/integrations/shopify/callback`     |
+| Meta         | `https://your-domain/api/integrations/meta/callback`        |
+| Google       | `https://your-domain/api/integrations/google/callback`      |
+| Klaviyo      | `https://your-domain/api/integrations/klaviyo/callback`     |
 
-### Step 3 — Connect your custom domain
-
-Once HELM has a real domain (e.g. `usehelm.in`, `helm.ai`, etc.):
-
-1. In your Vercel project, go to **Settings → Domains**.
-2. Type your domain, click **Add**.
-3. Vercel shows you the DNS records to add (an `A` record and/or a `CNAME`).
-4. Add those records in your domain registrar's DNS panel (GoDaddy, Namecheap, BigRock, etc.).
-5. Wait 5-30 minutes. SSL is auto-provisioned.
+### 5. Deploy
+```bash
+vercel --prod
+```
+Or use Vercel's GitHub integration — the project is auto-detected as a
+static site with serverless functions. No build command, no output dir.
 
 ---
 
-## Editing content
-
-Everything lives in `index.html`. Open it in any code editor (VS Code, Sublime, even Notepad). Search-and-replace works fine.
-
-| Section | What to change | Where |
-|---|---|---|
-| Brand name | `HELM` → your name | Find/replace `HELM` |
-| Headline | `Your brand is leaking revenue.` | Search this string |
-| Subhead | One paragraph below headline | Just below |
-| Integrations | Shopify / Meta / Google etc. | Search `integration-row` |
-| Monitoring vectors | 8 cards | Search `monitor-grid` |
-| Recommendations feed | Sample insights | Search `feed-body` |
-| Pricing | 3 tiers + amounts | Search `class="pricing"` |
-| Email capture | CTA form action | Search `email-capture` |
-| Footer | Year, brand | Search `Yuvaan Technologies` |
-
-To change the accent color (neon green → anything else):
-- Open `index.html`
-- Find `--accent: #00FF88;` near the top
-- Change it. Done. Every accent updates.
-
----
-
-## File structure
+## Founder workflow
 
 ```
-helm-landing/
-├── index.html       # Entire landing page
-├── favicon.svg      # Browser tab icon
-├── vercel.json      # Vercel config (clean URLs, security headers)
-├── robots.txt       # SEO crawl rules
-├── .gitignore       # What git should ignore
-└── README.md        # This file
+sign up  →  connect Shopify + Meta + GA  →  HELM syncs metrics
+        →  Claude analyzes data         →  insights + weekly report
+        →  dashboard updates            →  alerts on anomalies
 ```
 
-No build step. No node_modules. No framework. Just HTML + CSS + JS in one file. This is intentional — fast to ship, fast to load, easy to hand off.
+Each connection writes a row to `public.integrations`. The
+`/api/data/sync` endpoint fans out to each connected provider and writes
+normalized daily aggregates into `public.analytics_daily`.
+`/api/ai/insights` reads those aggregates and asks Claude to surface the
+top revenue leaks, conversion drops, ROAS dips, creative-fatigue signals
+and retention opportunities — then persists them to `public.insights`
+and `public.reports`.
 
----
+## Security notes
 
-## What's next
+- All tables are RLS-protected — even with the anon key, a user can only
+  read/write their own rows.
+- Integration access/refresh tokens are stored in Postgres; consider
+  enabling [Supabase Vault](https://supabase.com/docs/guides/database/vault)
+  for envelope encryption before launching.
+- OAuth state cookies are HMAC-signed with `HELM_OAUTH_SECRET` and
+  expire after 10 minutes.
+- The service-role key is only used server-side (never shipped to the
+  browser).
 
-When HELM moves from landing page → real product, this scaffold graduates to Next.js. The landing page stays as-is at the root; the product moves to `/app`.
+## Roadmap
 
-Roadmap:
-- [ ] Wire email capture to Loops / Resend / ConvertKit (real waitlist backend)
-- [ ] Add `/audit` route — interactive intake form
-- [ ] Add `/manifesto` — long-form positioning page
-- [ ] Add OG image (1200x630 social preview)
-- [ ] Move to Next.js when product backend is ready
+- [ ] Stripe billing for Starter / Growth plans (currently UI only)
+- [ ] Cron-triggered weekly reports via Vercel cron + email
+- [ ] Slack channel notifications
+- [ ] Multi-store workspaces for Scale plan
+- [ ] Encrypted token storage via Supabase Vault
 
 ---
 

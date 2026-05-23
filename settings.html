@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Settings · HELM</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body class="app-bg">
+
+<div id="app-root">
+  <div class="page-head">
+    <div>
+      <h1>Settings</h1>
+      <p class="subtitle">Manage integrations, alerts and your subscription.</p>
+    </div>
+  </div>
+
+  <div class="panel mb-4">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Profile</div>
+        <div class="panel-sub">Identifies you to HELM</div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">Brand</label>
+        <input class="form-input" id="brandInp" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="emailInp" disabled />
+      </div>
+    </div>
+    <button class="btn btn-primary" id="saveProfile">Save profile</button>
+  </div>
+
+  <div class="panel mb-4">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Connected sources</div>
+        <div class="panel-sub">Data feeds powering your insights</div>
+      </div>
+      <a href="/onboarding" class="btn btn-subtle btn-sm">Add new</a>
+    </div>
+    <div class="integ-grid" id="integGrid"></div>
+  </div>
+
+  <div class="panel mb-4">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Alerts</div>
+        <div class="panel-sub">When HELM should ping you about anomalies</div>
+      </div>
+    </div>
+    <div class="flex flex-col gap-3">
+      <label class="flex items-center gap-3">
+        <input type="checkbox" id="alertRoas" checked />
+        <span>ROAS drops more than <b>20%</b> day-over-day</span>
+      </label>
+      <label class="flex items-center gap-3">
+        <input type="checkbox" id="alertCvr" checked />
+        <span>Conversion rate drops below <b>1.5%</b></span>
+      </label>
+      <label class="flex items-center gap-3">
+        <input type="checkbox" id="alertCreative" checked />
+        <span>Creative fatigue detected on any ad set</span>
+      </label>
+      <label class="flex items-center gap-3">
+        <input type="checkbox" id="alertWeekly" checked />
+        <span>Send weekly AI report every <b>Monday 9am</b></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="panel mb-4">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Subscription</div>
+        <div class="panel-sub" id="subSub">Loading…</div>
+      </div>
+      <a href="/pricing" class="btn btn-primary btn-sm">Manage plan</a>
+    </div>
+    <div id="subBody">
+      <div class="skeleton skeleton-line med"></div>
+      <div class="skeleton skeleton-line long"></div>
+    </div>
+  </div>
+
+  <div class="panel" style="border-color:rgba(255,71,87,0.2);">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title text-danger">Danger zone</div>
+        <div class="panel-sub">These actions cannot be undone</div>
+      </div>
+    </div>
+    <button class="btn btn-danger" id="signOutBtn">Sign out</button>
+  </div>
+</div>
+
+<script src="/assets/js/supabase.js"></script>
+<script src="/assets/js/ui.js"></script>
+<script src="/assets/js/integrations.js"></script>
+<script src="/assets/js/app-shell.js"></script>
+<script>
+(async function () {
+  const ctx = await window.HelmShell.mount({ active: '/settings' });
+  if (!ctx) return;
+  const { user } = ctx;
+  const sb = await window.HelmSupabase.getClient();
+
+  document.getElementById('emailInp').value = user.email || '';
+  document.getElementById('brandInp').value = (user.user_metadata && user.user_metadata.brand_name) || '';
+
+  document.getElementById('saveProfile').addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      await sb.from('organizations').upsert({ user_id: user.id, name: document.getElementById('brandInp').value }, { onConflict: 'user_id' });
+      window.HelmUI.toast('Saved', 'success');
+    } catch (err) { window.HelmUI.toast(err.message, 'error'); }
+    e.currentTarget.disabled = false;
+  });
+
+  // Integrations grid
+  async function loadInteg() {
+    const conns = await window.HelmIntegrations.listConnections(user.id);
+    document.getElementById('integGrid').innerHTML = window.HelmIntegrations.CATALOG.map((i) => window.HelmIntegrations.renderCard(i, conns[i.id])).join('');
+    document.querySelectorAll('.js-connect').forEach((b) => b.addEventListener('click', async () => {
+      await window.HelmIntegrations.startConnect(b.dataset.p);
+      await loadInteg();
+    }));
+    document.querySelectorAll('.js-disconnect').forEach((b) => b.addEventListener('click', async () => {
+      if (!confirm('Disconnect ' + b.dataset.p + '?')) return;
+      await window.HelmIntegrations.disconnect(b.dataset.p, user.id);
+      await loadInteg();
+    }));
+  }
+  await loadInteg();
+
+  // Subscription
+  const { data: subs } = await sb.from('subscriptions').select().eq('user_id', user.id).limit(1);
+  const sub = subs?.[0];
+  if (sub) {
+    document.getElementById('subSub').textContent = sub.status === 'trialing'
+      ? 'Trial · ends ' + (sub.trial_ends_at ? new Date(sub.trial_ends_at).toLocaleDateString() : 'soon')
+      : sub.status;
+    document.getElementById('subBody').innerHTML = `
+      <div class="flex gap-4">
+        <div><div class="text-muted" style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Plan</div><div style="font-size:18px;font-weight:600;text-transform:capitalize;">${sub.plan}</div></div>
+        <div><div class="text-muted" style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Status</div><div style="font-size:18px;font-weight:600;text-transform:capitalize;">${sub.status}</div></div>
+        ${sub.trial_ends_at ? `<div><div class="text-muted" style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Trial ends</div><div style="font-size:18px;font-weight:600;">${new Date(sub.trial_ends_at).toLocaleDateString()}</div></div>` : ''}
+      </div>`;
+  } else {
+    document.getElementById('subSub').textContent = 'No active plan';
+    document.getElementById('subBody').innerHTML = '<a href="/pricing" class="btn btn-primary btn-sm">Start free trial</a>';
+  }
+
+  document.getElementById('signOutBtn').addEventListener('click', async () => {
+    if (confirm('Sign out of HELM?')) await window.HelmSupabase.signOut();
+  });
+})();
+</script>
+</body>
+</html>

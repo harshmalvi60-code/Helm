@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sign in · HELM</title>
+<meta name="description" content="Sign in to HELM — your AI growth operator for D2C ecommerce." />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body class="app-bg">
+
+<main class="auth-wrap">
+  <div class="auth-card">
+    <a href="/" class="auth-logo"><span class="mark"></span><span>HELM</span></a>
+    <h1>Welcome back</h1>
+    <p class="subtitle">Sign in to your growth operator.</p>
+
+    <div id="alert" class="hidden"></div>
+
+    <form id="loginForm" autocomplete="on">
+      <div class="form-group">
+        <label class="form-label" for="email">Work email</label>
+        <input class="form-input" type="email" id="email" name="email" required autocomplete="email" placeholder="founder@brand.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input class="form-input" type="password" id="password" name="password" required autocomplete="current-password" placeholder="••••••••" minlength="6" />
+      </div>
+      <button type="submit" class="btn btn-primary btn-block btn-lg" id="submitBtn">Sign in</button>
+    </form>
+
+    <div class="auth-divider">or continue with</div>
+    <button class="btn btn-subtle btn-block" id="googleBtn" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3a12 12 0 1 1-3.3-13.6l5.7-5.7A20 20 0 1 0 44 24c0-1.2-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8A12 12 0 0 1 24 16c3 0 5.7 1.1 7.8 3l5.7-5.7A20 20 0 0 0 6.3 14.7z"/><path fill="#4CAF50" d="M24 44a20 20 0 0 0 13.5-5.2l-6.2-5.2A12 12 0 0 1 12.7 28L6 33.3A20 20 0 0 0 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3a12 12 0 0 1-4.1 5.6l6.2 5.2A20 20 0 0 0 44 24c0-1.2-.1-2.4-.4-3.5z"/></svg>
+      Sign in with Google
+    </button>
+
+    <p class="auth-foot">
+      New to HELM? <a href="/signup">Start a free trial</a>
+    </p>
+  </div>
+</main>
+
+<script src="/assets/js/supabase.js"></script>
+<script src="/assets/js/ui.js"></script>
+<script>
+(async function () {
+  const form = document.getElementById('loginForm');
+  const btn = document.getElementById('submitBtn');
+  const alertBox = document.getElementById('alert');
+
+  // If already signed in, bounce to dashboard.
+  const user = await window.HelmSupabase.currentUser();
+  if (user) {
+    location.href = window.HelmUI.getParam('next') || '/dashboard';
+    return;
+  }
+
+  function showError(msg) {
+    alertBox.className = 'form-error';
+    alertBox.textContent = msg;
+    alertBox.classList.remove('hidden');
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    alertBox.classList.add('hidden');
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Signing in…';
+    try {
+      const sb = await window.HelmSupabase.getClient();
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      window.HelmUI.toast('Welcome back', 'success', 1400);
+      setTimeout(() => { location.href = window.HelmUI.getParam('next') || '/dashboard'; }, 250);
+    } catch (err) {
+      showError(err.message || 'Invalid credentials');
+      btn.disabled = false;
+      btn.textContent = 'Sign in';
+    }
+  });
+
+  document.getElementById('googleBtn').addEventListener('click', async () => {
+    const sb = await window.HelmSupabase.getClient();
+    await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: location.origin + '/dashboard' },
+    });
+  });
+})();
+</script>
+</body>
+</html>
