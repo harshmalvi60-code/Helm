@@ -69,23 +69,11 @@
     return new Date(iso).toLocaleDateString();
   }
 
-  async function apiFetch(path, opts = {}) {
-    const sb = await window.HelmSupabase.getClient();
-    let token = null;
-    try {
-      const { data } = await sb.auth.getSession();
-      token = data?.session?.access_token || null;
-    } catch (_) {}
-    const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
-    if (token) headers['Authorization'] = 'Bearer ' + token;
-    const r = await fetch(path, { ...opts, headers, credentials: 'same-origin' });
-    const ct = r.headers.get('content-type') || '';
-    const body = ct.includes('json') ? await r.json() : await r.text();
-    if (!r.ok) {
-      const msg = (body && body.error) || (typeof body === 'string' ? body : r.statusText);
-      throw new Error(msg || ('Request failed: ' + r.status));
-    }
-    return body;
+  // No-op shim retained for callers from earlier API-backed builds.
+  // In the frontend-only MVP there are no /api endpoints — every action
+  // runs against the local Supabase JS client (or the demo stub).
+  async function apiFetch() {
+    return null;
   }
 
   function debounce(fn, ms = 300) {

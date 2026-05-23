@@ -2,24 +2,26 @@
 
 **The AI Growth Operator for D2C Brands.**
 
-HELM connects to Shopify, Meta Ads, Google Analytics, Google Ads and Klaviyo,
-detects where you're leaking revenue, and ships you a prioritized list of
-fixes every week — powered by Claude.
+A frontend-only MVP: real auth UI, onboarding, dashboard with charts, AI
+insights feed, pricing — all driven by the Supabase JS SDK directly from
+the browser. Zero serverless functions, ships clean on the **Vercel
+Hobby plan**.
 
 ---
 
 ## Stack at a glance
 
-- **Frontend:** Vanilla HTML + CSS + JS (zero build step). Supabase JS
-  client and Chart.js are loaded from CDN. Every page is hand-written for
-  fast first paint and trivial debugging.
-- **Auth:** Supabase Auth (email + Google OAuth).
-- **Database:** Supabase Postgres with row-level security so each tenant
-  only ever sees their own rows. Schema: `supabase/schema.sql`.
-- **Server:** Vercel serverless Node.js 20 functions in `/api`. No npm deps.
-- **AI:** Anthropic Messages API (Claude Sonnet 4.6) via direct HTTP.
-- **Integrations:** Real OAuth flows for Shopify, Meta, Google (GA4 + Ads)
-  and Klaviyo. State is HMAC-signed and stored in a short-lived cookie.
+- **Frontend:** Vanilla HTML + CSS + JS. No build step. Chart.js +
+  Supabase JS loaded from CDN.
+- **Auth + DB:** Supabase (browser SDK). Row-level security keeps each
+  tenant's data isolated. Schema lives in `supabase/schema.sql`.
+- **Insights:** Client-side templated generator that salts realistic
+  insight cards with the user's actual snapshot numbers
+  (`assets/js/insights-gen.js`). Trivially swappable for a real LLM
+  call once you add a backend.
+- **Integrations:** Connection flow is simulated client-side for the
+  MVP. Real OAuth needs a server (a Supabase Edge Function or moving to
+  Vercel Pro) since `client_secret` can't live in the browser.
 
 ## Folder map
 
@@ -27,23 +29,15 @@ fixes every week — powered by Claude.
 .
 ├── index.html              # Marketing landing (orange-accent dark theme)
 ├── login.html / signup.html
-├── onboarding.html         # Connect Shopify / Meta / GA / Klaviyo
+├── onboarding.html         # Connect Shopify / Meta / GA / Klaviyo (simulated)
 ├── dashboard.html          # KPIs, ROAS, funnel, revenue/channel charts
 ├── insights.html           # AI insights feed + weekly report
 ├── settings.html           # Profile, integrations, alerts, subscription
 ├── pricing.html            # 3-tier pricing + FAQ
 ├── assets/
 │   ├── css/app.css
-│   └── js/{supabase,ui,app-shell,dashboard,insights,integrations}.js
-├── api/
-│   ├── config.js           # Public Supabase keys + capability flags
-│   ├── ai/insights.js      # Claude → insights + weekly report
-│   ├── data/snapshot.js    # Aggregated dashboard data
-│   ├── data/sync.js        # Per-provider data sync
-│   └── integrations/<p>/{install,callback}.js
-├── lib/                    # Server helpers (Supabase REST, Claude, OAuth)
-├── supabase/schema.sql     # DB schema + RLS policies
-├── .env.example
+│   └── js/{supabase,ui,app-shell,dashboard,insights-gen,integrations}.js
+├── supabase/schema.sql     # DB schema + RLS policies (for when you go live)
 ├── vercel.json
 └── package.json
 ```
@@ -52,88 +46,52 @@ fixes every week — powered by Claude.
 
 ## Quick start
 
-### 1. Local dev
+### 1. Local preview
 ```bash
-cp .env.example .env.local
-npm i -g vercel
-vercel dev
+npx serve -l 3000 .
 ```
-Open http://localhost:3000. With env vars blank, HELM falls into **demo
-mode** — auth/persistence are local-only and the dashboard shows
-synthesized data so you can navigate the whole product immediately.
+Open <http://localhost:3000>. With no Supabase config, HELM runs in
+**demo mode** — auth + persistence are local-only via `localStorage`
+and the dashboard renders synthesized but believable data so you can
+walk through the full product immediately.
 
-### 2. Set up Supabase
-1. Create a project at https://supabase.com.
-2. SQL Editor → paste the contents of `supabase/schema.sql` → Run.
+### 2. Wire up real Supabase (optional)
+1. Create a project at <https://supabase.com>.
+2. SQL Editor → paste `supabase/schema.sql` → Run.
 3. Authentication → Providers → enable Email + Google.
-4. Drop the keys into `.env.local` (and into Vercel for prod):
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
+4. Add these two lines to the `<head>` of every HTML page (or to a
+   tiny shared `assets/js/config.js` you load before `supabase.js`):
 
-### 3. Enable AI
-Add `ANTHROPIC_API_KEY`. Default model is `claude-sonnet-4-6` — override
-with `ANTHROPIC_MODEL` if needed.
+   ```html
+   <script>
+     window.HELM_CONFIG = {
+       supabaseUrl: 'https://YOUR-PROJECT.supabase.co',
+       supabaseAnonKey: 'YOUR-ANON-KEY'
+     };
+   </script>
+   ```
 
-### 4. Wire up real integrations
-For each provider you want live, set the matching env vars in
-`.env.example`. Until you do, the **Connect** button on `/onboarding`
-runs in demo mode (instantly marks the connection as live and lets you
-continue).
+   The anon key is safe in the browser — RLS in the schema makes sure
+   each user can only touch their own rows.
 
-Callback URLs to register in each provider's app settings:
-
-| Provider     | Callback URL                                                |
-|--------------|-------------------------------------------------------------|
-| Shopify      | `https://your-domain/api/integrations/shopify/callback`     |
-| Meta         | `https://your-domain/api/integrations/meta/callback`        |
-| Google       | `https://your-domain/api/integrations/google/callback`      |
-| Klaviyo      | `https://your-domain/api/integrations/klaviyo/callback`     |
-
-### 5. Deploy
+### 3. Deploy
 ```bash
-vercel --prod
+npx vercel --prod
 ```
-Or use Vercel's GitHub integration — the project is auto-detected as a
-static site with serverless functions. No build command, no output dir.
+Or use Vercel's GitHub integration. The project is auto-detected as a
+static site. No build command, no output dir, **no serverless
+functions** → fits on the Hobby tier with room to spare.
 
 ---
 
-## Founder workflow
-
-```
-sign up  →  connect Shopify + Meta + GA  →  HELM syncs metrics
-        →  Claude analyzes data         →  insights + weekly report
-        →  dashboard updates            →  alerts on anomalies
-```
-
-Each connection writes a row to `public.integrations`. The
-`/api/data/sync` endpoint fans out to each connected provider and writes
-normalized daily aggregates into `public.analytics_daily`.
-`/api/ai/insights` reads those aggregates and asks Claude to surface the
-top revenue leaks, conversion drops, ROAS dips, creative-fatigue signals
-and retention opportunities — then persists them to `public.insights`
-and `public.reports`.
-
-## Security notes
-
-- All tables are RLS-protected — even with the anon key, a user can only
-  read/write their own rows.
-- Integration access/refresh tokens are stored in Postgres; consider
-  enabling [Supabase Vault](https://supabase.com/docs/guides/database/vault)
-  for envelope encryption before launching.
-- OAuth state cookies are HMAC-signed with `HELM_OAUTH_SECRET` and
-  expire after 10 minutes.
-- The service-role key is only used server-side (never shipped to the
-  browser).
-
 ## Roadmap
 
+- [ ] Move insights generation behind a Supabase Edge Function so a
+      real Claude/OpenAI key can power it
+- [ ] Real OAuth flows (Shopify, Meta, GA4, Google Ads, Klaviyo) via
+      Supabase Edge Functions
 - [ ] Stripe billing for Starter / Growth plans (currently UI only)
-- [ ] Cron-triggered weekly reports via Vercel cron + email
-- [ ] Slack channel notifications
 - [ ] Multi-store workspaces for Scale plan
-- [ ] Encrypted token storage via Supabase Vault
 
 ---
 

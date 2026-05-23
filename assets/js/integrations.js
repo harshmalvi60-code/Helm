@@ -1,5 +1,6 @@
 // HELM — integration catalog + connection helpers.
-// Drives /onboarding and /settings. Talks to /api/integrations/* for real OAuth.
+// Drives /onboarding and /settings. Frontend-only MVP: connections are
+// simulated against the local Supabase client. Wire to real OAuth later.
 
 (function () {
   'use strict';
@@ -66,25 +67,41 @@
   }
 
   async function startConnect(provider) {
-    // Real flow: hit /api/integrations/<p>/install which 302s to OAuth.
-    // Demo flow: instantly mark as connected and return.
-    const cfg = await window.HelmSupabase.loadConfig();
-    if (cfg.demoMode) {
-      const sb = await window.HelmSupabase.getClient();
-      const { data: u } = await sb.auth.getUser();
-      if (!u?.user) return;
-      await sb.from('integrations').upsert({
-        user_id: u.user.id,
-        provider,
-        status: 'connected',
-        connected_at: new Date().toISOString(),
-        account_label: provider + '-demo-account',
-      }, { onConflict: 'user_id,provider' });
-      window.HelmUI?.toast(provider + ' connected', 'success');
-      return { demo: true };
-    }
-    // Real OAuth — kick off via server endpoint
-    location.href = `/api/integrations/${provider}/install`;
+    // Frontend-only MVP: simulate a successful OAuth round-trip and
+    // persist the "connection" against the user. To wire up real OAuth
+    // later you'll need a backend (Supabase Edge Function or Vercel Pro)
+    // since the client_secret can't live in the browser.
+    const sb = await window.HelmSupabase.getClient();
+    const { data: u } = await sb.auth.getUser();
+    if (!u?.user) return;
+
+    // Brief delay so the connect spinner reads as a real round-trip.
+    await new Promise((r) => setTimeout(r, 700));
+
+    await sb.from('integrations').upsert({
+      user_id: u.user.id,
+      provider,
+      status: 'connected',
+      connected_at: new Date().toISOString(),
+      account_label: friendlyAccount(provider),
+    }, { onConflict: 'user_id,provider' });
+
+    window.HelmUI?.toast(friendlyName(provider) + ' connected', 'success');
+    return { demo: true };
+  }
+
+  function friendlyName(p) {
+    const c = (window.HelmIntegrations?.CATALOG || []).find((x) => x.id === p);
+    return c ? c.name : p;
+  }
+  function friendlyAccount(p) {
+    return ({
+      shopify: 'demo-store.myshopify.com',
+      meta: 'Acme Coffee · Ad Account',
+      google: 'GA4-348293742',
+      'google-ads': '847-293-1102',
+      klaviyo: 'acme-coffee',
+    })[p] || p + '-demo';
   }
 
   async function disconnect(provider, userId) {

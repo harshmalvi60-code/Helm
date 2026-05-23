@@ -54,6 +54,8 @@
 <script src="/assets/js/supabase.js"></script>
 <script src="/assets/js/ui.js"></script>
 <script src="/assets/js/integrations.js"></script>
+<script src="/assets/js/dashboard.js"></script>
+<script src="/assets/js/insights-gen.js"></script>
 <script src="/assets/js/app-shell.js"></script>
 <script>
 (async function () {
@@ -85,10 +87,8 @@
     }));
     grid.querySelectorAll('.js-sync').forEach((b) => b.addEventListener('click', async () => {
       b.disabled = true; b.innerHTML = '<span class="spinner"></span> Syncing…';
-      try {
-        await window.HelmUI.apiFetch('/api/data/sync', { method: 'POST', body: JSON.stringify({ provider: b.dataset.p }) });
-        window.HelmUI.toast('Sync queued', 'success');
-      } catch (e) { window.HelmUI.toast(e.message || 'Sync failed', 'error'); }
+      await new Promise((r) => setTimeout(r, 800));
+      window.HelmUI.toast('Sync complete', 'success');
       b.disabled = false; b.textContent = 'Resync now';
     }));
   }
@@ -97,9 +97,14 @@
     continueBtn.disabled = true;
     continueBtn.innerHTML = '<span class="spinner"></span> Running first analysis…';
     try {
-      await window.HelmUI.apiFetch('/api/data/sync', { method: 'POST', body: JSON.stringify({ initial: true }) }).catch(() => {});
-      await window.HelmUI.apiFetch('/api/ai/insights', { method: 'POST', body: JSON.stringify({ mode: 'initial' }) }).catch(() => {});
+      // Seed the user's insights so the dashboard isn't empty on first load.
+      if (window.HelmInsightsGen) {
+        const sb = await window.HelmSupabase.getClient();
+        const fresh = await window.HelmInsightsGen.generateAll();
+        for (const ins of fresh) await sb.from('insights').insert({ ...ins, user_id: user.id });
+      }
     } catch (_) {}
+    await new Promise((r) => setTimeout(r, 600));
     location.href = '/dashboard?onboarded=1';
   });
 

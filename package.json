@@ -1,13 +1,10 @@
 {
   "name": "helm",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
-  "description": "HELM — AI Growth Operator for D2C brands. Zero-build static frontend + Vercel serverless API.",
-  "engines": {
-    "node": ">=20"
-  },
+  "description": "HELM — AI Growth Operator for D2C brands. Frontend-only MVP. Static HTML/CSS/JS, deploys on Vercel Hobby.",
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "npx serve -l 3000 .",
     "deploy": "vercel --prod"
   },
   "license": "UNLICENSED"

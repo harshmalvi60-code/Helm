@@ -1,19 +1,20 @@
 // HELM — dashboard data + chart rendering.
-// Real flow: GET /api/data/snapshot returns aggregated metrics.
-// Demo flow: server returns synthesized but realistic numbers so the dashboard never looks empty.
+// Frontend-only MVP: snapshots are generated client-side from a
+// deterministic daily seed so charts stay believable. Swap loadSnapshot
+// for a real fetch when you add a backend.
 
 (function () {
   'use strict';
 
-  const { fmtCurrency, fmtNumber, fmtPct, fmtDelta, apiFetch, toast } = window.HelmUI;
+  const { fmtCurrency, fmtNumber, fmtPct, fmtDelta, toast } = window.HelmUI;
 
+  // Frontend-only MVP: snapshot is generated entirely client-side from a
+  // deterministic per-day seed so the dashboard looks consistent across
+  // refreshes but believable. Swap this out for a real fetch once you
+  // have a backend.
   async function loadSnapshot(range = '30d') {
-    try {
-      return await apiFetch('/api/data/snapshot?range=' + encodeURIComponent(range));
-    } catch (e) {
-      console.warn('snapshot fetch failed, using local fallback', e);
-      return generateLocalSnapshot(range);
-    }
+    await new Promise((r) => setTimeout(r, 180)); // small skeleton flash
+    return generateLocalSnapshot(range);
   }
 
   function generateLocalSnapshot(range = '30d') {

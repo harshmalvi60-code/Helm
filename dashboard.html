@@ -191,7 +191,6 @@
   document.getElementById('refreshBtn').addEventListener('click', async (e) => {
     e.currentTarget.disabled = true;
     try {
-      await window.HelmUI.apiFetch('/api/data/sync', { method: 'POST', body: JSON.stringify({}) }).catch(() => {});
       await refresh(document.getElementById('rangeSel').value);
       window.HelmUI.toast('Data refreshed', 'success', 1600);
     } finally { e.currentTarget.disabled = false; }

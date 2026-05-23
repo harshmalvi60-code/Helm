@@ -1,38 +1,21 @@
 // HELM — Supabase browser client (loaded as a global via CDN)
-// Reads runtime config from /api/config or window.HELM_CONFIG.
-// Falls back to a local demo mode when no Supabase project is configured,
-// so the UI is fully navigable even before env vars are set.
+// Frontend-only MVP: reads optional config from window.HELM_CONFIG
+// (set on the page) or falls back to demo mode using localStorage.
+// To go live, drop your Supabase URL + anon key into window.HELM_CONFIG
+// in any page <head> before this script loads.
 
 (function () {
   'use strict';
 
-  const CONFIG_CACHE_KEY = 'helm:config:v1';
-
-  async function loadConfig() {
-    if (window.HELM_CONFIG) return window.HELM_CONFIG;
-
-    const cached = sessionStorage.getItem(CONFIG_CACHE_KEY);
-    if (cached) {
-      try { return JSON.parse(cached); } catch (_) { /* ignore */ }
-    }
-
-    try {
-      const r = await fetch('/api/config', { credentials: 'same-origin' });
-      if (r.ok) {
-        const cfg = await r.json();
-        sessionStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(cfg));
-        return cfg;
-      }
-    } catch (_) {
-      // /api/config not deployed yet — fall through to demo mode
-    }
+  function loadConfig() {
+    if (window.HELM_CONFIG && window.HELM_CONFIG.supabaseUrl) return window.HELM_CONFIG;
     return { supabaseUrl: '', supabaseAnonKey: '', demoMode: true };
   }
 
   async function getClient() {
     if (window.__helmSupabase) return window.__helmSupabase;
 
-    const cfg = await loadConfig();
+    const cfg = loadConfig();
     window.HELM_CONFIG = cfg;
 
     if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {

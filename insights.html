@@ -72,6 +72,8 @@
 
 <script src="/assets/js/supabase.js"></script>
 <script src="/assets/js/ui.js"></script>
+<script src="/assets/js/dashboard.js"></script>
+<script src="/assets/js/insights-gen.js"></script>
 <script src="/assets/js/app-shell.js"></script>
 <script>
 (async function () {
@@ -157,9 +159,24 @@
   document.getElementById('generateBtn').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Analyzing with Claude…';
+    btn.innerHTML = '<span class="spinner"></span> Analyzing your stack…';
     try {
-      await window.HelmUI.apiFetch('/api/ai/insights', { method: 'POST', body: JSON.stringify({ mode: 'fresh' }) });
+      const sb = await window.HelmSupabase.getClient();
+      // Wipe previous run so the UI shows a fresh batch instead of duplicating.
+      const { data: existing } = await sb.from('insights').select().eq('user_id', user.id);
+      for (const row of existing || []) await sb.from('insights').delete().eq('id', row.id);
+
+      const fresh = await window.HelmInsightsGen.generateAll();
+      for (const ins of fresh) await sb.from('insights').insert({ ...ins, user_id: user.id });
+
+      const snap = await window.HelmDashboard.loadSnapshot('30d');
+      const metrics = {
+        revenue: snap.kpis.revenue.value, ad_spend: snap.kpis.ad_spend.value, roas: snap.kpis.roas.value,
+        sessions: snap.kpis.sessions.value, orders: snap.kpis.orders.value, cvr: snap.kpis.cvr.value, aov: snap.kpis.aov.value,
+      };
+      const report = window.HelmInsightsGen.generateReport(fresh, metrics);
+      await sb.from('reports').insert({ user_id: user.id, kind: 'weekly', ...report });
+
       window.HelmUI.toast('Fresh insights generated', 'success');
       await load();
     } catch (err) {
