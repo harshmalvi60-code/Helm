@@ -2,7 +2,7 @@
 // Returns aggregated KPIs + daily series + top products + funnel data
 // from the connected Shopify store. Access token is read server-side only.
 
-const { getUserFromRequest, getIntegration, hasSupabase } = require('../../lib/supabase');
+const { getUserFromRequest, getIntegration, upsertIntegration, hasSupabase, rest } = require('../../lib/supabase');
 const { listOrders, listProducts, getShopInfo } = require('../../lib/shopify');
 
 const RANGE_DAYS = { '7d': 7, '30d': 30, '90d': 90 };
@@ -32,11 +32,35 @@ module.exports = async (req, res) => {
     const priorSinceIso = new Date(Date.now() - days * 2 * 86400000).toISOString();
 
     // Parallel fetch: orders (current + prior period), products, shop info
-    const [allOrders, products, shopInfo] = await Promise.all([
-      listOrders(shop, accessToken, { sinceIso: priorSinceIso, limit: 250 }),
-      listProducts(shop, accessToken, { limit: 50 }).catch(() => []),
-      getShopInfo(shop, accessToken).catch(() => null),
-    ]);
+    let allOrders, products, shopInfo;
+    try {
+      [allOrders, products, shopInfo] = await Promise.all([
+        listOrders(shop, accessToken, { sinceIso: priorSinceIso, limit: 250 }),
+        listProducts(shop, accessToken, { limit: 50 }).catch(() => []),
+        getShopInfo(shop, accessToken).catch(() => null),
+      ]);
+    } catch (e) {
+      // If Shopify rejects the token (401/403), the user uninstalled the
+      // app or revoked access. Mark the integration row so the UI can
+      // prompt them to reconnect — and never return mock data.
+      const msg = String(e.message || '');
+      if (/\b(401|403)\b/.test(msg)) {
+        try {
+          await upsertIntegration(user.id, 'shopify', { status: 'revoked' });
+          await rest('notifications', {
+            method: 'POST',
+            body: {
+              user_id: user.id, severity: 'critical', kind: 'shopify_revoked',
+              title: 'Shopify access revoked',
+              body:  'HELM lost access to your store. Reconnect to keep your dashboard live.',
+              read: false,
+            },
+          }).catch(() => {});
+        } catch (_) {}
+        return json(res, 200, { connected: false, reason: 'shopify_revoked', shop });
+      }
+      throw e;
+    }
 
     const currency = (shopInfo && shopInfo.currency) || (integ.metadata && integ.metadata.currency) || 'INR';
 
@@ -55,6 +79,9 @@ module.exports = async (req, res) => {
       shopName: (shopInfo && shopInfo.name) || integ.account_label || shop,
       shopInfo,
     });
+
+    // Stamp last_synced_at on the integration row (best-effort)
+    upsertIntegration(user.id, 'shopify', { last_synced_at: new Date().toISOString() }).catch(() => {});
 
     json(res, 200, snapshot);
   } catch (e) {

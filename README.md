@@ -2,134 +2,171 @@
 
 **The AI Growth Operator for D2C Brands.**
 
-Real Shopify OAuth, real orders, real analytics, real insights — no
-mock data anywhere on the dashboard. 3 lightweight Vercel serverless
-functions handle the OAuth and analytics aggregation; everything else
-is static HTML/JS. Fits on Vercel Hobby.
+Real Shopify OAuth, real orders, real analytics — zero mock data anywhere
+on the dashboard. 4 lightweight Vercel serverless functions handle OAuth,
+analytics aggregation and runtime config; everything else is static
+HTML/JS. Fits on Vercel Hobby.
 
 ---
 
 ## Architecture
 
 ```
-Browser (static HTML/JS + Supabase JS)
-    │
-    ├── Auth                 → Supabase Auth (browser SDK)
-    ├── Integrations list    → Supabase REST (RLS-protected, no tokens visible)
-    ├── /api/integrations/shopify/install     ──► Shopify OAuth authorize URL
-    ├── /api/integrations/shopify/callback   ──► Token exchange + secure store
-    └── /api/shopify/analytics                ──► Live Shopify Admin API call,
-                                                  aggregates KPIs + series +
-                                                  top products + funnel
+Browser  ──► /api/config                          (public Supabase keys)
+        │
+        ├─► /api/integrations/shopify/install     (start OAuth)
+        │       │
+        │       ▼
+        │   Shopify authorize → /api/integrations/shopify/callback
+        │       │                  (HMAC + state verify)
+        │       │                  (exchange code → access_token)
+        │       │                  (store token server-side only)
+        │       │                  (insert "connected" notification)
+        │       ▼
+        │   Supabase: integrations.access_token  ← REVOKE'd from anon/auth
+        │
+        └─► /api/shopify/analytics                (live Admin API fetch)
+                │                                   → aggregated KPIs
+                │                                   → if 401 → mark revoked
+                ▼
+            Dashboard renders real data only
 ```
 
-- **Auth**: Supabase (email + Google OAuth, browser-side SDK).
-- **DB**: Supabase Postgres. Tokens stored in `integrations.access_token`
-  with column-level SELECT revoked from anon + authenticated roles, so
-  the access token never reaches the browser.
-- **Shopify**: real OAuth (`/api/integrations/shopify/install` +
-  `/callback`) with HMAC-signed state cookie + Shopify HMAC validation.
-- **Analytics**: server-side fetch against the Shopify Admin REST API.
-  Returns aggregated KPIs, daily revenue series, top products, funnel.
-- **Insights generator**: client-side templates that only fire when the
-  data they need is present (e.g. ROAS templates skip until Meta is
-  connected). Every number references a real value the user can see.
-- **Other integrations** (Meta, GA, Google Ads, Klaviyo): UI present
-  with "Coming soon" badges — slot in additional OAuth pairs when ready.
+- **Auth**: Supabase (email + Google OAuth, browser SDK + PKCE flow).
+- **Tokens**: stored in `integrations.access_token`. Column-level SELECT
+  is REVOKEd from anon + authenticated roles, so tokens never leave the
+  server. Service role key is server-only.
+- **No mock fallback**: if env isn't set, the user lands on
+  `/setup-required` with a clear missing-vars checklist.
+- **Notifications**: real events only — `shopify_connected`,
+  `shopify_revoked`, AI insight runs.
 
 ## Folder map
 
 ```
 .
-├── index.html              # Landing
+├── index.html                                # Landing
 ├── login.html / signup.html
-├── onboarding.html         # 4-step wizard
-├── dashboard.html          # Real Shopify data only
-├── insights.html           # AI insights feed + weekly report
-├── reports.html
-├── profile.html / settings.html
-├── pricing.html
+├── onboarding.html                           # 4-step wizard
+├── dashboard.html                            # Real Shopify data only
+├── insights.html / reports.html
+├── profile.html / settings.html / pricing.html
+├── setup-required.html                       # Shown when env missing
 ├── assets/
 │   ├── css/app.css
 │   └── js/{supabase, ui, app-shell, dashboard, insights-gen,
 │            integrations, notifications, ai-loader}.js
 ├── api/
-│   ├── integrations/shopify/install.js
-│   ├── integrations/shopify/callback.js
-│   └── shopify/analytics.js
+│   ├── config.js                             # public config delivery
+│   ├── integrations/shopify/install.js       # OAuth start
+│   ├── integrations/shopify/callback.js      # token exchange + store
+│   └── shopify/analytics.js                  # live Admin API → snapshot
 ├── lib/
-│   ├── supabase.js     # REST helpers (service-role)
-│   ├── oauth.js        # HMAC-signed state cookie
-│   └── shopify.js      # Admin API client + HMAC verify
-└── supabase/schema.sql # tables, RLS, column-level token revoke
+│   ├── supabase.js                           # REST + service-role helpers
+│   ├── oauth.js                              # HMAC state cookies
+│   └── shopify.js                            # Admin API client + HMAC verify
+├── scripts/setup-supabase.js                 # one-command schema apply
+├── supabase/schema.sql                       # tables, RLS, token revoke
+├── vercel.json / package.json / .env.example
 ```
 
-## Setup (15 minutes)
+## Setup (10 minutes, one command)
 
-### 1. Supabase
+### 1. Supabase project
 1. Create a project at <https://supabase.com>.
-2. SQL Editor → paste `supabase/schema.sql` → Run.
-3. Auth → Providers → enable Email (+ Google if desired).
-4. Copy the URL, anon key, and service role key.
+2. Copy from `Settings → API`:
+   - Project URL → `SUPABASE_URL`
+   - `anon` key → `SUPABASE_ANON_KEY`
+   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY`
+3. Get a personal access token at
+   <https://supabase.com/dashboard/account/tokens> → `SUPABASE_ACCESS_TOKEN`
+4. Copy the project ref (the subdomain) → `SUPABASE_PROJECT_REF`
 
-### 2. Shopify Partner app
-1. <https://partners.shopify.com/> → Apps → Create app → Public.
-2. App URL: `https://your-domain/onboarding`
-3. Allowed redirection URL: `https://your-domain/api/integrations/shopify/callback`
-4. Copy client ID + secret.
-
-### 3. Environment
-Copy `.env.example` → `.env.local` and fill in:
-- `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- `HELM_OAUTH_SECRET` (run `openssl rand -hex 32`)
-- `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET`
-
-In production, set the same variables in Vercel → Project Settings →
-Environment Variables.
-
-### 4. Expose Supabase keys to the browser
-Add this snippet to the `<head>` of every page (or to a tiny shared
-`assets/js/config.js` you `<script>` before `supabase.js`):
-
-```html
-<script>
-  window.HELM_CONFIG = {
-    supabaseUrl: 'https://YOUR-PROJECT.supabase.co',
-    supabaseAnonKey: 'YOUR-ANON-KEY'
-  };
-</script>
-```
-
-The anon key is safe in the browser — RLS gates every row by `auth.uid()`,
-and the `access_token` column is REVOKEd from anon/authenticated.
-
-### 5. Run / deploy
+### 2. Apply the schema
 ```bash
-npx vercel dev      # local
-npx vercel --prod   # production
+cp .env.example .env.local       # paste the values from step 1
+npm run setup
 ```
+This script applies `supabase/schema.sql` via the Supabase Management
+API: creates all tables, enables RLS, and revokes anon/authenticated
+SELECT on the `access_token` column. Idempotent — re-run any time the
+schema changes.
+
+### 3. Shopify Partner app
+1. <https://partners.shopify.com> → Apps → Create app (Custom or Public).
+2. **App URL**: `https://your-domain/onboarding`
+3. **Allowed redirection URL**:
+   `https://your-domain/api/integrations/shopify/callback`
+4. Copy client ID + secret → `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET`.
+
+### 4. OAuth state secret
+```bash
+openssl rand -hex 32     # → HELM_OAUTH_SECRET
+```
+
+### 5. Deploy
+Set all the env vars (see `.env.example`) in
+**Vercel → Project Settings → Environment Variables**, then:
+```bash
+npx vercel --prod
+```
+
+No HTML edits required — `/api/config` delivers the public keys to the
+browser on every page load.
 
 ---
 
 ## Founder flow
 
 ```
-sign up → onboarding wizard (brand, goal, connect Shopify)
-        → real OAuth round-trip with Shopify
-        → /api/shopify/analytics fetches orders + products
-        → dashboard renders live KPIs, charts, funnel, products
-        → AI insights generated from the live snapshot
+visit /signup
+    → real Supabase signup (email + password or Google OAuth)
+visit /onboarding
+    → wizard step 3: "Connect Shopify"
+    → modal asks for your shop URL (acme.myshopify.com)
+    → 302 to /api/integrations/shopify/install?shop=acme.myshopify.com
+    → 302 to https://acme.myshopify.com/admin/oauth/authorize?...
+    → user approves → 302 back to /api/integrations/shopify/callback
+    → HMAC verified, code → access_token, stored via service role
+    → "Shopify connected · 1,284 orders detected" notification fires
+    → redirect to /onboarding?connected=shopify
+    → wizard step 4: AI analysis runs against /api/shopify/analytics
+    → redirect to /dashboard?onboarded=1
+visit /dashboard
+    → /api/shopify/analytics fetches live orders + products
+    → real KPIs, daily revenue series, top products, funnel
 ```
 
-## What's deferred
+## Token lifecycle
 
-- Meta Ads, Google Ads, GA4, Klaviyo OAuth — UI present, marked
-  "Coming soon". Each adds 2 backend functions; still well under
-  Vercel Hobby's 12-function ceiling.
-- Real LLM-generated insights via Claude/OpenAI — currently uses
-  templated narratives parameterized by live numbers. Wire a single
-  `/api/ai/insights` route to swap in real generation.
-- Stripe billing — pricing page UI is present, no charging logic yet.
+- Shopify offline tokens don't expire by default → no refresh logic.
+- If a user uninstalls the app or revokes the grant, the next
+  `/api/shopify/analytics` call gets a 401 from Shopify, sets the
+  integration row's status to `revoked`, fires a critical notification,
+  and the dashboard shows a "Reconnect Shopify" CTA instead of stale data.
+
+## Status of each integration
+
+| Provider     | OAuth | Live data | Notes |
+|--------------|-------|-----------|-------|
+| Shopify      | ✅    | ✅        | Orders, products, customers, funnel |
+| Meta Ads     | —     | —         | Coming soon (UI only) |
+| Google GA4   | —     | —         | Coming soon (UI only) |
+| Google Ads   | —     | —         | Coming soon (UI only) |
+| Klaviyo      | —     | —         | Coming soon (UI only) |
+
+Each new provider adds 2 functions (install + callback) plus optionally
+an analytics route — still well within Vercel Hobby's 12-function cap.
+
+## Security checklist
+
+- ✅ Access tokens never leave the server (column-level REVOKE)
+- ✅ Service-role key only used in `/api/*` routes
+- ✅ OAuth state HMAC-signed, 10-min expiry, HttpOnly secure cookie
+- ✅ Shopify HMAC validated on every callback
+- ✅ All Supabase tables RLS-protected by `auth.uid()`
+- ✅ Tokens encrypted at rest (Supabase default) — Vault recommended for production
+- ✅ No mock data path — misconfigured deploys land on `/setup-required`
 
 ---
 

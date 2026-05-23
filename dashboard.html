@@ -41,20 +41,20 @@
     <div id="emptyState" class="hidden">
       <div class="panel" style="text-align:center;padding:64px 28px;background:linear-gradient(180deg, rgba(0,255,136,0.03) 0%, var(--bg-card) 80%);border:1px solid var(--border-accent);">
         <div class="ai-orb" style="margin: 0 auto 22px;width:84px;height:84px;"><div class="core" style="width:32px;height:32px;"></div></div>
-        <h2 style="font-size:24px;margin-bottom:8px;letter-spacing:-0.022em;">Connect your Shopify store to begin</h2>
-        <p class="text-muted" style="max-width:480px;margin:0 auto 24px;line-height:1.55;font-size:14px;">
+        <h2 id="emptyTitle" style="font-size:24px;margin-bottom:8px;letter-spacing:-0.022em;">Connect your Shopify store to begin</h2>
+        <p id="emptyBody" class="text-muted" style="max-width:480px;margin:0 auto 24px;line-height:1.55;font-size:14px;">
           HELM reads orders, products, customers and inventory from your live Shopify data — no mock numbers, no fake insights. Connect in under 30 seconds.
         </p>
         <div class="flex gap-3 justify-center flex-wrap" style="margin-bottom:28px;">
           <button class="btn btn-primary btn-lg" id="connectShopifyBtn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2v6"/><path d="M15 2v6"/><path d="M7 8h10v4a5 5 0 0 1-10 0z"/><path d="M12 17v5"/></svg>
-            Connect Shopify
+            <span id="connectShopifyLabel">Connect Shopify</span>
           </button>
           <a href="/onboarding" class="btn btn-ghost btn-lg">See all integrations →</a>
         </div>
         <div class="flex gap-6 justify-center text-xs text-tertiary mono flex-wrap">
           <span class="flex items-center gap-2"><span class="status-dot live"></span> Read-only access</span>
-          <span class="flex items-center gap-2"><span class="status-dot live"></span> Tokens encrypted</span>
+          <span class="flex items-center gap-2"><span class="status-dot live"></span> Tokens stored server-side</span>
           <span class="flex items-center gap-2"><span class="status-dot live"></span> Revoke anytime</span>
         </div>
       </div>
@@ -207,6 +207,11 @@
     try {
       const snap = await D.loadSnapshot(range);
       if (!snap || snap.connected === false) {
+        if (snap?.reason === 'shopify_revoked') {
+          document.getElementById('emptyTitle').textContent = 'Shopify access was revoked';
+          document.getElementById('emptyBody').textContent  = 'HELM lost access to ' + (snap.shop || 'your store') + '. Reconnect to keep your dashboard live.';
+          document.getElementById('connectShopifyLabel').textContent = 'Reconnect Shopify';
+        }
         showState('empty');
         return;
       }

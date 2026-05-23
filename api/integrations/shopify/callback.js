@@ -2,8 +2,8 @@
 // Validates HMAC + state, exchanges code → access_token, stores it securely.
 
 const { verify, readCookie, clearStateCookie, originFrom } = require('../../../lib/oauth');
-const { upsertIntegration, logEvent } = require('../../../lib/supabase');
-const { verifyHmac, exchangeCode, getShopInfo, hasShopify, SCOPES } = require('../../../lib/shopify');
+const { upsertIntegration, logEvent, rest } = require('../../../lib/supabase');
+const { verifyHmac, exchangeCode, getShopInfo, countOrders, hasShopify, SCOPES } = require('../../../lib/shopify');
 
 module.exports = async (req, res) => {
   try {
@@ -29,9 +29,15 @@ module.exports = async (req, res) => {
     const token = await exchangeCode(shop, code);
     if (!token.access_token) throw new Error('No access_token returned');
 
-    // 4. Fetch the shop record so we have a friendly label
+    // 4. Fetch the shop record + order count so the post-connect
+    //    notification can show a real number
     let shopInfo = null;
-    try { shopInfo = await getShopInfo(shop, token.access_token); } catch (_) {}
+    let orderCount30d = null;
+    try {
+      shopInfo = await getShopInfo(shop, token.access_token);
+      const since = new Date(Date.now() - 30 * 86400000).toISOString();
+      orderCount30d = await countOrders(shop, token.access_token, { sinceIso: since });
+    } catch (_) {}
 
     // 5. Persist (service-role write; token is server-only)
     await upsertIntegration(claims.uid, 'shopify', {
@@ -41,14 +47,30 @@ module.exports = async (req, res) => {
       scopes: token.scope || SCOPES,
       access_token: token.access_token,
       connected_at: new Date().toISOString(),
+      last_synced_at: new Date().toISOString(),
       metadata: {
         currency: shopInfo?.currency || 'INR',
         country: shopInfo?.country_code || null,
         plan: shopInfo?.plan_name || null,
         timezone: shopInfo?.iana_timezone || null,
+        order_count_30d: orderCount30d,
       },
     });
-    await logEvent(claims.uid, 'shopify_connected', { shop });
+    await logEvent(claims.uid, 'shopify_connected', { shop, orderCount30d });
+
+    // Real notification on successful connect — no seeded data
+    try {
+      const title = shopInfo
+        ? `Shopify connected · ${shopInfo.name}`
+        : `Shopify connected · ${shop.replace('.myshopify.com', '')}`;
+      const body = orderCount30d != null
+        ? `${orderCount30d.toLocaleString('en-IN')} orders detected in the last 30 days. HELM is now reading live data.`
+        : 'HELM is now reading live data from your store.';
+      await rest('notifications', {
+        method: 'POST',
+        body: { user_id: claims.uid, severity: 'success', kind: 'shopify_connected', title, body, read: false },
+      });
+    } catch (_) { /* notifications table missing → schema not applied; non-fatal */ }
 
     clearStateCookie(res);
     res.statusCode = 302;

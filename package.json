@@ -1,13 +1,14 @@
 {
   "name": "helm",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "private": true,
-  "description": "HELM — AI Growth Operator for D2C brands. Frontend + 3 Vercel serverless functions for real Shopify OAuth and analytics.",
+  "description": "HELM — AI Growth Operator for D2C brands. Frontend + 4 Vercel serverless functions for real Shopify OAuth, analytics, and runtime config.",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "dev": "vercel dev",
+    "setup": "node scripts/setup-supabase.js",
     "deploy": "vercel --prod"
   },
   "license": "UNLICENSED"

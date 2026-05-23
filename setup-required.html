@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Setup required · HELM</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body class="app-bg">
+
+<div class="aurora"></div>
+
+<main style="max-width:780px;margin:0 auto;padding:80px 24px;position:relative;z-index:1;">
+  <a href="/" class="auth-logo" style="margin-bottom:40px;"><span class="mark"></span><span>HELM</span></a>
+
+  <div class="panel" style="padding:36px;">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="ai-orb" style="width:48px;height:48px;margin:0;"><div class="core" style="width:18px;height:18px;"></div></div>
+      <div>
+        <h1 style="font-size:24px;font-weight:600;letter-spacing:-0.022em;">Setup required</h1>
+        <p class="text-muted text-sm">Your HELM deployment is missing some environment variables.</p>
+      </div>
+    </div>
+
+    <div class="alert info mt-4">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <span>This page only appears when the deployment isn't fully configured. Add the missing variables below and redeploy.</span>
+    </div>
+
+    <h2 class="mt-6 mb-3" style="font-size:16px;">Missing variables</h2>
+    <div id="missingList" class="flex flex-col gap-2"></div>
+
+    <h2 class="mt-6 mb-3" style="font-size:16px;">How to fix</h2>
+    <ol style="padding-left:0;list-style:none;display:flex;flex-direction:column;gap:14px;font-size:13.5px;color:var(--text-secondary);line-height:1.7;">
+      <li style="display:flex;gap:12px;padding:14px 16px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-sm);">
+        <span class="mono text-accent" style="font-weight:600;font-size:13px;flex-shrink:0;">01</span>
+        <div>
+          <b style="color:var(--text-primary);">Create a Supabase project</b><br>
+          Visit <a class="text-accent" href="https://supabase.com" target="_blank" rel="noreferrer">supabase.com</a> → New project. Copy the URL, anon key and service-role key from <span class="mono text-tertiary">Settings → API</span>.
+        </div>
+      </li>
+      <li style="display:flex;gap:12px;padding:14px 16px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-sm);">
+        <span class="mono text-accent" style="font-weight:600;font-size:13px;flex-shrink:0;">02</span>
+        <div>
+          <b style="color:var(--text-primary);">Apply the schema</b><br>
+          Either paste <span class="mono">supabase/schema.sql</span> into the Supabase SQL Editor, or set <span class="mono">SUPABASE_PROJECT_REF</span> + <span class="mono">SUPABASE_ACCESS_TOKEN</span> locally and run <span class="mono">npm run setup</span>.
+        </div>
+      </li>
+      <li style="display:flex;gap:12px;padding:14px 16px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-sm);">
+        <span class="mono text-accent" style="font-weight:600;font-size:13px;flex-shrink:0;">03</span>
+        <div>
+          <b style="color:var(--text-primary);">Create a Shopify Partner app</b><br>
+          <a class="text-accent" href="https://partners.shopify.com" target="_blank" rel="noreferrer">partners.shopify.com</a> → Apps → Create app.
+          Set callback URL to <span class="mono" id="cbUrl">https://your-domain/api/integrations/shopify/callback</span>
+        </div>
+      </li>
+      <li style="display:flex;gap:12px;padding:14px 16px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-sm);">
+        <span class="mono text-accent" style="font-weight:600;font-size:13px;flex-shrink:0;">04</span>
+        <div>
+          <b style="color:var(--text-primary);">Add env vars in Vercel</b><br>
+          Project → Settings → Environment Variables → paste each variable listed below. Redeploy when done.
+        </div>
+      </li>
+    </ol>
+
+    <h2 class="mt-6 mb-3" style="font-size:16px;">Required env vars</h2>
+    <pre style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--r);padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:var(--text-secondary);overflow-x:auto;">SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+HELM_OAUTH_SECRET=&lt;openssl rand -hex 32&gt;
+SHOPIFY_CLIENT_ID=&lt;from Shopify partner app&gt;
+SHOPIFY_CLIENT_SECRET=&lt;from Shopify partner app&gt;</pre>
+
+    <div class="flex gap-3 mt-6">
+      <button class="btn btn-primary" id="recheckBtn">Re-check configuration</button>
+      <a class="btn btn-ghost" href="https://github.com/harshmalvi60-code/Helm#setup-15-minutes" target="_blank" rel="noreferrer">View full setup guide →</a>
+    </div>
+  </div>
+</main>
+
+<script>
+(async function () {
+  // Show the actual callback URL for this deployment
+  document.getElementById('cbUrl').textContent = window.location.origin + '/api/integrations/shopify/callback';
+
+  let cfg = {};
+  try {
+    const r = await fetch('/api/config', { cache: 'no-store' });
+    cfg = await r.json();
+  } catch (_) { cfg = { configured: false, missing: {} }; }
+
+  // If everything is now configured, bounce out of this page
+  if (cfg.configured) {
+    window.location.href = '/dashboard';
+    return;
+  }
+
+  const list = document.getElementById('missingList');
+  const params = new URLSearchParams(window.location.search);
+  const missingFromUrl = (params.get('missing') || '').split(',').filter(Boolean);
+  const missing = cfg.missing || {};
+  const items = Object.keys(missing).filter((k) => missing[k]);
+  const all = items.length ? items : missingFromUrl;
+  if (!all.length) {
+    list.innerHTML = '<div class="text-muted text-sm">Unable to read configuration — try the re-check button.</div>';
+  } else {
+    list.innerHTML = all.map((k) => `
+      <div class="flex items-center gap-2 text-sm" style="font-family:'JetBrains Mono',monospace;">
+        <span class="status-dot error"></span>
+        <span class="text-tertiary">${k}</span>
+        <span class="tag warning" style="margin-left:auto;">Missing</span>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('recheckBtn').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Checking…';
+    const r = await fetch('/api/config', { cache: 'no-store' });
+    const c = await r.json();
+    if (c.configured) { window.location.href = '/dashboard'; return; }
+    btn.disabled = false; btn.textContent = 'Re-check configuration';
+    location.reload();
+  });
+})();
+</script>
+</body>
+</html>

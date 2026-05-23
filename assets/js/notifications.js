@@ -1,51 +1,10 @@
 // HELM — notifications dropdown.
-// Seeds realistic alerts on first load (per user) so the bell always
-// has something believable in it. Reads/writes via the Supabase client
-// (real or demo stub) so it carries through to production seamlessly.
+// Reads/writes via Supabase. Notifications are inserted by real events
+// only — Shopify connect, AI insight runs, alert detections. There is
+// no seeded / mock content in production.
 
 (function () {
   'use strict';
-
-  const SEED = [
-    { severity: 'critical', kind: 'roas',
-      title: 'Meta ROAS dropped to 1.84x',
-      body: 'Down from 2.6x last week — concentrated in Prospecting · LAL 5%.',
-      ago_min: 12 },
-    { severity: 'warning', kind: 'fatigue',
-      title: 'Creative fatigue on 2 top ads',
-      body: 'Frequency crossed 5.0 — CTR halved in the last 7 days.',
-      ago_min: 48 },
-    { severity: 'success', kind: 'opportunity',
-      title: 'Klaviyo flow lifted by 24%',
-      body: '"Browse abandonment" flow had its best week — keep it running.',
-      ago_min: 220 },
-    { severity: 'info', kind: 'sync',
-      title: 'Shopify sync complete',
-      body: '1,284 orders ingested from the last 30 days.',
-      ago_min: 360, read: true },
-    { severity: 'warning', kind: 'cvr',
-      title: 'Mobile CVR dipped under 1.5%',
-      body: 'Desktop is converting at 2.4× mobile — likely PDP friction.',
-      ago_min: 1300, read: true },
-  ];
-
-  async function ensureSeed(userId) {
-    const sb = await window.HelmSupabase.getClient();
-    const { data } = await sb.from('notifications').select().eq('user_id', userId).limit(1);
-    if (data && data.length) return;
-    const now = Date.now();
-    for (const n of SEED) {
-      await sb.from('notifications').insert({
-        user_id: userId,
-        severity: n.severity,
-        kind: n.kind,
-        title: n.title,
-        body: n.body,
-        read: !!n.read,
-        created_at: new Date(now - n.ago_min * 60000).toISOString(),
-      });
-    }
-  }
 
   async function list(userId, limit = 12) {
     const sb = await window.HelmSupabase.getClient();
@@ -61,9 +20,26 @@
     }
   }
 
+  // Insert a notification only when a real event fires. Idempotent
+  // via the optional dedupe_key so we don't double-insert from re-renders.
+  async function emit(userId, { severity = 'info', kind = null, title, body = null, dedupeKey = null } = {}) {
+    if (!title) return;
+    const sb = await window.HelmSupabase.getClient();
+    if (dedupeKey) {
+      const { data: existing } = await sb.from('notifications')
+        .select().eq('user_id', userId).eq('kind', kind).limit(1);
+      if (existing && existing.some((n) => n.metadata?.dedupe_key === dedupeKey)) return;
+    }
+    await sb.from('notifications').insert({
+      user_id: userId,
+      severity, kind, title, body,
+      read: false,
+      metadata: dedupeKey ? { dedupe_key: dedupeKey } : {},
+    });
+  }
+
   async function attach(wrapEl, user) {
     if (!wrapEl) return;
-    await ensureSeed(user.id);
 
     const updateDot = async () => {
       const items = await list(user.id);
@@ -141,5 +117,5 @@
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 
-  window.HelmNotif = { attach, list, markAllRead };
+  window.HelmNotif = { attach, list, markAllRead, emit };
 })();
