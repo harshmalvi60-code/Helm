@@ -7,108 +7,136 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/css/app.css" />
 </head>
 <body class="app-bg">
 
 <div id="app-root">
-  <div class="page-head">
-    <div>
-      <h1>Dashboard</h1>
-      <p class="subtitle">Your store, channels and ad performance at a glance. <span id="lastSync" class="text-tertiary mono"></span></p>
-    </div>
-    <div class="page-actions">
-      <select class="form-select" id="rangeSel" style="width:auto;">
-        <option value="7d">Last 7 days</option>
-        <option value="30d" selected>Last 30 days</option>
-        <option value="90d">Last 90 days</option>
-      </select>
-      <button class="btn btn-subtle" id="refreshBtn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
-        Sync
-      </button>
-      <a href="/insights" class="btn btn-primary">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        View AI Insights
-      </a>
-    </div>
-  </div>
+  <div class="page-body">
+    <div id="trialAlert" class="hidden"></div>
+    <div id="connectAlert" class="hidden"></div>
 
-  <div id="trialAlert" class="alert hidden"></div>
-  <div id="connectAlert" class="alert hidden"></div>
+    <div class="page-head">
+      <div>
+        <h1>Good morning, <span class="text-accent" id="firstName">Founder</span></h1>
+        <p class="subtitle">Here's what's happening across your store and channels. <span id="lastSync" class="text-tertiary mono"></span></p>
+      </div>
+      <div class="page-actions">
+        <div class="seg" id="rangeSeg">
+          <button data-r="7d">7d</button>
+          <button data-r="30d" class="on">30d</button>
+          <button data-r="90d">90d</button>
+        </div>
+        <input type="hidden" id="rangeSel" value="30d" />
+        <button class="btn btn-subtle" id="refreshBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+          Sync
+        </button>
+        <a href="/insights" class="btn btn-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          AI Insights
+        </a>
+      </div>
+    </div>
 
-  <div class="kpi-grid" id="kpiRow"></div>
-  <div class="kpi-grid" id="kpiRow2" style="margin-top:0;"></div>
+    <div class="kpi-grid" id="kpiRow">
+      <div class="kpi-skeleton"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line med" style="height:24px;margin-top:10px;"></div><div class="skeleton skeleton-line short"></div></div>
+      <div class="kpi-skeleton"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line med" style="height:24px;margin-top:10px;"></div><div class="skeleton skeleton-line short"></div></div>
+      <div class="kpi-skeleton"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line med" style="height:24px;margin-top:10px;"></div><div class="skeleton skeleton-line short"></div></div>
+      <div class="kpi-skeleton"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line med" style="height:24px;margin-top:10px;"></div><div class="skeleton skeleton-line short"></div></div>
+    </div>
+    <div class="kpi-grid" id="kpiRow2" style="margin-top:0;"></div>
 
-  <div class="grid-2 mt-4">
-    <div class="panel">
-      <div class="panel-head">
-        <div>
-          <div class="panel-title">Revenue vs Ad Spend</div>
-          <div class="panel-sub">Daily totals across all connected channels</div>
+    <div class="grid-2 mt-4">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Revenue vs Ad Spend</div>
+            <div class="panel-sub">Daily totals across all connected channels</div>
+          </div>
+          <div class="panel-actions">
+            <div class="seg">
+              <button class="on">Both</button>
+              <button>Revenue</button>
+              <button>Spend</button>
+            </div>
+          </div>
         </div>
+        <div class="chart-box"><canvas id="revChart"></canvas></div>
       </div>
-      <div class="chart-box"><canvas id="revChart"></canvas></div>
-    </div>
-    <div class="panel">
-      <div class="panel-head">
-        <div>
-          <div class="panel-title">Revenue by Channel</div>
-          <div class="panel-sub">Attribution mix (last sync)</div>
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Revenue by Channel</div>
+            <div class="panel-sub">Attribution mix · last sync</div>
+          </div>
         </div>
+        <div class="chart-box"><canvas id="channelChart"></canvas></div>
       </div>
-      <div class="chart-box"><canvas id="channelChart"></canvas></div>
     </div>
-  </div>
 
-  <div class="grid-2 mt-4">
-    <div class="panel">
-      <div class="panel-head">
-        <div>
-          <div class="panel-title">Conversion Funnel</div>
-          <div class="panel-sub">Sessions → purchase, last period</div>
+    <div class="grid-2 mt-4">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Conversion Funnel</div>
+            <div class="panel-sub">Sessions → purchase · drop-off at each step</div>
+          </div>
         </div>
+        <div id="funnel"></div>
       </div>
-      <div id="funnel"></div>
-    </div>
-    <div class="panel">
-      <div class="panel-head">
-        <div>
-          <div class="panel-title">ROAS Trend</div>
-          <div class="panel-sub">Paid efficiency over time</div>
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">ROAS Trend</div>
+            <div class="panel-sub">Blended paid efficiency over time</div>
+          </div>
         </div>
+        <div class="chart-box"><canvas id="roasChart"></canvas></div>
       </div>
-      <div class="chart-box"><canvas id="roasChart"></canvas></div>
     </div>
-  </div>
 
-  <div class="grid-2 mt-4">
-    <div class="panel">
-      <div class="panel-head">
-        <div>
-          <div class="panel-title">Channel Performance</div>
-          <div class="panel-sub">Spend, revenue and ROAS by source</div>
+    <div class="grid-2 mt-4">
+      <div class="panel flush">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Channel Performance</div>
+            <div class="panel-sub">Spend, revenue and ROAS by source</div>
+          </div>
+          <a href="/insights" class="btn btn-subtle btn-sm">Why is Meta down?</a>
         </div>
-        <a href="/insights" class="btn btn-subtle btn-sm">Why is Meta down?</a>
+        <div id="channelTable"></div>
       </div>
-      <div id="channelTable"></div>
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Latest AI Insights</div>
+            <div class="panel-sub">Prioritized by revenue impact</div>
+          </div>
+          <a href="/insights" class="btn btn-subtle btn-sm">All →</a>
+        </div>
+        <div id="latestInsights" class="insights-feed">
+          <div class="insight">
+            <div class="skeleton skeleton-line med"></div>
+            <div class="skeleton skeleton-line long" style="height:18px;margin-top:10px;"></div>
+            <div class="skeleton skeleton-line short"></div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="panel">
+
+    <div class="panel flush mt-4">
       <div class="panel-head">
         <div>
-          <div class="panel-title">Latest Insights</div>
-          <div class="panel-sub">AI-generated, prioritized by revenue impact</div>
+          <div class="panel-title">Top Products</div>
+          <div class="panel-sub">By revenue · last 30 days</div>
         </div>
-        <a href="/insights" class="btn btn-subtle btn-sm">All →</a>
-      </div>
-      <div id="latestInsights" class="insights-feed">
-        <div class="insight">
-          <div class="skeleton skeleton-line med"></div>
-          <div class="skeleton skeleton-line long"></div>
-          <div class="skeleton skeleton-line short"></div>
+        <div class="panel-actions">
+          <button class="btn btn-subtle btn-sm">View all</button>
         </div>
       </div>
+      <div id="productTable"></div>
     </div>
   </div>
 </div>
@@ -116,6 +144,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="/assets/js/supabase.js"></script>
 <script src="/assets/js/ui.js"></script>
+<script src="/assets/js/notifications.js"></script>
 <script src="/assets/js/dashboard.js"></script>
 <script src="/assets/js/integrations.js"></script>
 <script src="/assets/js/app-shell.js"></script>
@@ -125,49 +154,53 @@
   if (!ctx) return;
   const { user } = ctx;
 
+  const name = user.user_metadata?.full_name || user.user_metadata?.brand_name || (user.email ? user.email.split('@')[0] : 'Founder');
+  document.getElementById('firstName').textContent = name.split(' ')[0];
+
   let charts = {};
+  const D = window.HelmDashboard;
 
   async function refresh(range) {
-    const snap = await window.HelmDashboard.loadSnapshot(range);
-    document.getElementById('kpiRow').innerHTML = window.HelmDashboard.renderKpis(snap.kpis);
-    document.getElementById('kpiRow2').innerHTML = window.HelmDashboard.renderKpiRow2(snap.kpis);
-    document.getElementById('lastSync').textContent = '· Synced ' + window.HelmUI.relativeTime(snap.generated_at);
+    const snap = await D.loadSnapshot(range);
+    document.getElementById('kpiRow').innerHTML = D.renderKpis(snap);
+    document.getElementById('kpiRow2').innerHTML = D.renderKpiRow2(snap);
+    document.getElementById('lastSync').textContent = '· synced ' + window.HelmUI.relativeTime(snap.generated_at);
 
     Object.values(charts).forEach((c) => c?.destroy?.());
-    charts.rev = window.HelmDashboard.drawRevenueChart(document.getElementById('revChart'), snap.series);
-    charts.roas = window.HelmDashboard.drawRoasChart(document.getElementById('roasChart'), snap.series);
-    charts.channel = window.HelmDashboard.drawChannelChart(document.getElementById('channelChart'), snap.channels);
-    window.HelmDashboard.renderFunnel(document.getElementById('funnel'), snap.funnel);
-    window.HelmDashboard.renderChannelTable(document.getElementById('channelTable'), snap.channels);
+    charts.rev     = D.drawRevenueChart(document.getElementById('revChart'), snap.series);
+    charts.roas    = D.drawRoasChart(document.getElementById('roasChart'), snap.series);
+    charts.channel = D.drawChannelChart(document.getElementById('channelChart'), snap.channels);
+    D.renderFunnel(document.getElementById('funnel'), snap.funnel);
+    D.renderChannelTable(document.getElementById('channelTable'), snap.channels);
+    D.renderProductTable(document.getElementById('productTable'), snap.products);
+    D.countUpVisible();
   }
 
   async function loadLatestInsights() {
-    try {
-      const sb = await window.HelmSupabase.getClient();
-      const { data } = await sb.from('insights').select().eq('user_id', user.id).order('created_at', { ascending: false }).limit(3);
-      const target = document.getElementById('latestInsights');
-      if (!data || !data.length) {
-        target.innerHTML = `
-          <div class="insight">
-            <div class="insight-title">Run your first AI analysis</div>
-            <div class="insight-body">Connect Shopify + Meta and HELM will surface revenue leaks, ROAS dips and creative fatigue automatically.</div>
-            <div class="insight-actions"><a href="/insights" class="btn btn-primary btn-sm">Generate insights</a></div>
-          </div>`;
-        return;
-      }
-      target.innerHTML = data.map((i) => `
-        <div class="insight sev-${i.severity || 'info'}">
-          <div class="insight-head">
-            <span class="tag ${i.severity || 'info'}">${(i.category || 'insight').toUpperCase()}</span>
-            <span class="text-tertiary mono" style="font-size:11px;">${window.HelmUI.relativeTime(i.created_at)}</span>
-          </div>
-          <div class="insight-title">${escape(i.title)}</div>
-          <div class="insight-body">${escape(i.summary || '')}</div>
-        </div>
-      `).join('');
-    } catch (e) {
-      console.warn('insights load failed', e);
+    const sb = await window.HelmSupabase.getClient();
+    const { data } = await sb.from('insights').select().eq('user_id', user.id).order('created_at', { ascending: false }).limit(3);
+    const target = document.getElementById('latestInsights');
+    if (!data || !data.length) {
+      target.innerHTML = `
+        <div class="insight sev-info">
+          <div class="insight-head"><span class="tag info">START HERE</span></div>
+          <div class="insight-title">Generate your first AI report</div>
+          <div class="insight-body">HELM will analyze your last 30 days and surface revenue leaks, ROAS dips and creative fatigue.</div>
+          <div class="insight-actions"><a href="/insights" class="btn btn-primary btn-sm">Generate insights</a></div>
+        </div>`;
+      return;
     }
+    target.innerHTML = data.map((i) => `
+      <div class="insight sev-${i.severity || 'info'}">
+        <div class="insight-head">
+          <span class="tag ${i.severity || 'info'}">${(i.category || 'insight').replace('_', ' ')}</span>
+          <span class="text-tertiary text-xs mono">${window.HelmUI.relativeTime(i.created_at)}</span>
+          ${i.impact_inr ? `<span class="tag neutral" style="margin-left:auto;">${window.HelmUI.fmtCurrency(i.impact_inr)}/mo</span>` : ''}
+        </div>
+        <div class="insight-title">${esc(i.title)}</div>
+        <div class="insight-body">${esc(i.summary || '')}</div>
+      </div>
+    `).join('');
   }
 
   async function checkConnections() {
@@ -178,26 +211,34 @@
       a.className = 'alert warning';
       a.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2v6"/><path d="M15 2v6"/><path d="M7 8h10v4a5 5 0 0 1-10 0z"/><path d="M12 17v5"/></svg>
-        <span>No data sources connected yet — these numbers are sample data.</span>
-        <a href="/onboarding" class="btn btn-primary btn-sm" style="margin-left:auto;">Connect now</a>`;
+        <span><b>No data sources connected yet.</b> These numbers are sample data — connect Shopify and Meta to see your real performance.</span>
+        <a href="/onboarding" class="btn btn-primary btn-sm" style="margin-left:auto;">Connect →</a>`;
     }
   }
 
-  function escape(s) {
-    return String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-  }
+  function esc(s) { return String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 
-  document.getElementById('rangeSel').addEventListener('change', (e) => refresh(e.target.value));
+  // Range segmented control
+  document.querySelectorAll('#rangeSeg button').forEach((b) => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#rangeSeg button').forEach((x) => x.classList.remove('on'));
+      b.classList.add('on');
+      document.getElementById('rangeSel').value = b.dataset.r;
+      refresh(b.dataset.r);
+    });
+  });
+
   document.getElementById('refreshBtn').addEventListener('click', async (e) => {
     e.currentTarget.disabled = true;
-    try {
-      await refresh(document.getElementById('rangeSel').value);
-      window.HelmUI.toast('Data refreshed', 'success', 1600);
-    } finally { e.currentTarget.disabled = false; }
+    e.currentTarget.innerHTML = '<span class="spinner"></span> Syncing…';
+    await refresh(document.getElementById('rangeSel').value);
+    window.HelmUI.toast('Data refreshed', 'success', 1500);
+    e.currentTarget.disabled = false;
+    e.currentTarget.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg> Sync';
   });
 
   if (window.HelmUI.getParam('onboarded') === '1') {
-    window.HelmUI.toast('Stack connected — HELM is analyzing your data', 'success', 3000);
+    window.HelmUI.toast('Stack connected — running first analysis', 'success', 2500);
     window.HelmUI.setParam('onboarded', null);
   }
 

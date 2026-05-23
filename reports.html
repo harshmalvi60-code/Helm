@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reports · HELM</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body class="app-bg">
+
+<div id="app-root">
+  <div class="page-body">
+    <div class="page-head">
+      <div>
+        <h1>Reports</h1>
+        <p class="subtitle">Weekly AI-generated growth reports — a record of what HELM saw, ranked, and recommended.</p>
+      </div>
+      <div class="page-actions">
+        <a href="/insights" class="btn btn-primary btn-sm">Generate new →</a>
+      </div>
+    </div>
+
+    <div id="reportList" class="flex flex-col gap-3"></div>
+  </div>
+</div>
+
+<div id="reportModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.78);backdrop-filter:blur(8px);z-index:200;display:grid;place-items:center;padding:20px;">
+  <div style="background:var(--bg-card);border:1px solid var(--border-strong);border-radius:var(--r-lg);max-width:760px;width:100%;max-height:84vh;overflow-y:auto;box-shadow:var(--shadow-4);">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);">
+      <div>
+        <div class="panel-title">Weekly Growth Report</div>
+        <div class="panel-sub" id="modalDate">—</div>
+      </div>
+      <button class="btn-icon" id="closeModal">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div style="padding:22px;" id="modalBody"></div>
+  </div>
+</div>
+
+<script src="/assets/js/supabase.js"></script>
+<script src="/assets/js/ui.js"></script>
+<script src="/assets/js/notifications.js"></script>
+<script src="/assets/js/app-shell.js"></script>
+<script>
+(async function () {
+  const ctx = await window.HelmShell.mount({ active: '/reports' });
+  if (!ctx) return;
+  const { user } = ctx;
+  const sb = await window.HelmSupabase.getClient();
+
+  const { data } = await sb.from('reports').select().eq('user_id', user.id).order('created_at', { ascending: false });
+  const target = document.getElementById('reportList');
+
+  if (!data || !data.length) {
+    target.innerHTML = `
+      <div class="panel" style="text-align:center;padding:48px 24px;">
+        <div class="ai-orb" style="margin: 0 auto 18px;width:56px;height:56px;"><div class="core" style="width:22px;height:22px;"></div></div>
+        <div class="panel-title mb-2" style="font-size:18px;">No reports yet</div>
+        <p class="text-muted mb-4 text-sm" style="max-width:380px;margin:0 auto 18px;">Generate your first AI report from the Insights page.</p>
+        <a href="/insights" class="btn btn-primary">Go to AI Insights →</a>
+      </div>`;
+    return;
+  }
+
+  target.innerHTML = data.map((r, i) => `
+    <div class="panel" data-id="${r.id}" style="cursor:pointer;animation:fadeUp .35s ease ${i * 0.05}s backwards;">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="tag opportunity">${r.kind || 'weekly'}</span>
+            <span class="text-tertiary text-xs mono">${window.HelmUI.relativeTime(r.created_at)}</span>
+          </div>
+          <div class="panel-title">${firstLine(r.summary_md || 'Growth report')}</div>
+          <div class="panel-sub mt-1">${secondLine(r.summary_md)}</div>
+        </div>
+        <div class="text-right">
+          ${kpiSnip('ROAS', (r.metrics?.roas || 0).toFixed?.(2) + 'x')}
+          ${kpiSnip('Revenue', window.HelmUI.fmtCurrency(r.metrics?.revenue || 0))}
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-tertiary);"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+    </div>
+  `).join('');
+
+  function kpiSnip(label, value) {
+    return `<div style="display:inline-block;margin-left:12px;text-align:right;"><div class="eyebrow" style="font-size:10px;">${label}</div><div class="mono" style="font-weight:600;font-size:14px;margin-top:2px;">${value}</div></div>`;
+  }
+  function firstLine(md) {
+    const lines = (md || '').split('\n').filter((l) => l.trim() && !l.startsWith('#')).filter(Boolean);
+    return esc(lines[0] || 'Growth report');
+  }
+  function secondLine(md) {
+    const lines = (md || '').split('\n').filter((l) => l.trim() && !l.startsWith('#'));
+    return esc(lines[1] || lines[2] || '');
+  }
+  function esc(s) { return String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); }
+
+  // Click → open modal
+  target.addEventListener('click', (e) => {
+    const card = e.target.closest('[data-id]');
+    if (!card) return;
+    const r = data.find((x) => x.id === card.dataset.id);
+    if (!r) return;
+    document.getElementById('modalDate').textContent = window.HelmUI.relativeTime(r.created_at);
+    document.getElementById('modalBody').innerHTML = `
+      <div style="font-size:14px;color:var(--text-secondary);line-height:1.75;">${mdToHtml(r.summary_md || '')}</div>
+      <div class="panel-title mt-6 mb-3">This week's plays</div>
+      <ol style="list-style:none;padding:0;display:flex;flex-direction:column;gap:10px;">
+        ${((r.recommendations || []).map ? r.recommendations : JSON.parse(r.recommendations || '[]')).map((x, i) => `
+          <li style="display:flex;gap:12px;padding:12px 14px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-sm);font-size:13px;color:var(--text-secondary);">
+            <span class="mono text-accent" style="font-weight:600;font-size:12px;">0${i + 1}</span>
+            <span>${esc(typeof x === 'string' ? x : x.text || JSON.stringify(x))}</span>
+          </li>
+        `).join('')}
+      </ol>
+    `;
+    document.getElementById('reportModal').classList.remove('hidden');
+  });
+
+  document.getElementById('closeModal').addEventListener('click', () => document.getElementById('reportModal').classList.add('hidden'));
+  document.getElementById('reportModal').addEventListener('click', (e) => {
+    if (e.target.id === 'reportModal') document.getElementById('reportModal').classList.add('hidden');
+  });
+
+  function mdToHtml(s) {
+    return esc(s)
+      .replace(/^### (.+)$/gm, '<h4 style="color:var(--text-primary);margin:16px 0 6px;font-size:14px;">$1</h4>')
+      .replace(/^## (.+)$/gm,  '<h3 style="color:var(--text-primary);margin:18px 0 8px;font-size:16px;">$1</h3>')
+      .replace(/\n/g, '<br>');
+  }
+})();
+</script>
+</body>
+</html>

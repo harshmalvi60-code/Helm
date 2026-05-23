@@ -8,10 +8,12 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/css/app.css" />
 </head>
 <body class="app-bg">
+
+<div class="aurora"></div>
 
 <main class="auth-wrap">
   <div class="auth-card">
@@ -29,8 +31,12 @@
       <div class="form-group">
         <label class="form-label" for="password">Password</label>
         <input class="form-input" type="password" id="password" name="password" required autocomplete="current-password" placeholder="••••••••" minlength="6" />
+        <div class="form-hint flex justify-between" style="margin-top:8px;">
+          <span></span>
+          <a href="#" style="color:var(--accent);font-size:12px;">Forgot password?</a>
+        </div>
       </div>
-      <button type="submit" class="btn btn-primary btn-block btn-lg" id="submitBtn">Sign in</button>
+      <button type="submit" class="btn btn-primary btn-block btn-lg" id="submitBtn">Sign in →</button>
     </form>
 
     <div class="auth-divider">or continue with</div>
@@ -39,9 +45,7 @@
       Sign in with Google
     </button>
 
-    <p class="auth-foot">
-      New to HELM? <a href="/signup">Start a free trial</a>
-    </p>
+    <p class="auth-foot">New to HELM? <a href="/signup">Start a free trial</a></p>
   </div>
 </main>
 
@@ -53,12 +57,8 @@
   const btn = document.getElementById('submitBtn');
   const alertBox = document.getElementById('alert');
 
-  // If already signed in, bounce to dashboard.
   const user = await window.HelmSupabase.currentUser();
-  if (user) {
-    location.href = window.HelmUI.getParam('next') || '/dashboard';
-    return;
-  }
+  if (user) { location.href = window.HelmUI.getParam('next') || '/dashboard'; return; }
 
   function showError(msg) {
     alertBox.className = 'form-error';
@@ -77,21 +77,18 @@
       const sb = await window.HelmSupabase.getClient();
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      window.HelmUI.toast('Welcome back', 'success', 1400);
+      window.HelmUI.toast('Welcome back', 'success', 1300);
       setTimeout(() => { location.href = window.HelmUI.getParam('next') || '/dashboard'; }, 250);
     } catch (err) {
       showError(err.message || 'Invalid credentials');
       btn.disabled = false;
-      btn.textContent = 'Sign in';
+      btn.textContent = 'Sign in →';
     }
   });
 
   document.getElementById('googleBtn').addEventListener('click', async () => {
     const sb = await window.HelmSupabase.getClient();
-    await sb.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: location.origin + '/dashboard' },
-    });
+    await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + '/dashboard' } });
   });
 })();
 </script>

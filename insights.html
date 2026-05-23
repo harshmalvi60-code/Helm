@@ -7,73 +7,85 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/css/app.css" />
 </head>
 <body class="app-bg">
 
 <div id="app-root">
-  <div class="page-head">
-    <div>
-      <h1>AI Insights</h1>
-      <p class="subtitle">HELM analyzes your connected data continuously and surfaces what's costing you money — and what to fix next.</p>
+  <div class="page-body">
+    <div class="page-head">
+      <div>
+        <h1>AI Insights</h1>
+        <p class="subtitle">HELM analyzes your connected data continuously and surfaces what's costing you money — and what to fix next.</p>
+      </div>
+      <div class="page-actions">
+        <select class="form-select" id="filterSev" style="width:auto;padding:8px 12px;">
+          <option value="">All severities</option>
+          <option value="critical">Critical</option>
+          <option value="warning">Warning</option>
+          <option value="opportunity">Opportunity</option>
+          <option value="info">Info</option>
+        </select>
+        <button class="btn btn-primary" id="generateBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Generate fresh report
+        </button>
+      </div>
     </div>
-    <div class="page-actions">
-      <select class="form-select" id="filterSev" style="width:auto;">
-        <option value="">All severities</option>
-        <option value="critical">Critical</option>
-        <option value="warning">Warning</option>
-        <option value="opportunity">Opportunity</option>
-        <option value="info">Info</option>
-      </select>
-      <button class="btn btn-primary" id="generateBtn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        Generate fresh report
-      </button>
-    </div>
-  </div>
 
-  <div class="alert hidden" id="genAlert"></div>
-
-  <div class="grid-2">
-    <div class="panel">
-      <div class="panel-head">
-        <div>
-          <div class="panel-title">Weekly AI Report</div>
-          <div class="panel-sub">Synthesized from your last sync</div>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Weekly Growth Report</div>
+            <div class="panel-sub">Synthesized from your last sync</div>
+          </div>
+          <span class="text-tertiary text-xs mono" id="reportDate">—</span>
         </div>
-        <span class="text-tertiary mono" style="font-size:11px;" id="reportDate">—</span>
-      </div>
-      <div id="weeklyReport">
-        <div class="skeleton skeleton-line long"></div>
-        <div class="skeleton skeleton-line long"></div>
-        <div class="skeleton skeleton-line med"></div>
-      </div>
-    </div>
-    <div class="panel">
-      <div class="panel-head">
-        <div>
-          <div class="panel-title">Growth Recommendations</div>
-          <div class="panel-sub">Highest-leverage actions for this week</div>
+        <div id="weeklyReport">
+          <div class="skeleton skeleton-line long"></div>
+          <div class="skeleton skeleton-line long"></div>
+          <div class="skeleton skeleton-line med"></div>
         </div>
       </div>
-      <ol id="recs" style="padding-left:18px;font-size:13.5px;color:var(--text-secondary);line-height:1.7;">
-        <li class="skeleton skeleton-line med"></li>
-        <li class="skeleton skeleton-line long"></li>
-      </ol>
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">This Week's Plays</div>
+            <div class="panel-sub">Highest-leverage actions</div>
+          </div>
+        </div>
+        <ol id="recs" style="padding-left:0;list-style:none;display:flex;flex-direction:column;gap:10px;font-size:13px;color:var(--text-secondary);"></ol>
+      </div>
+    </div>
+
+    <div class="mt-6">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <div class="panel-title">Insight Feed</div>
+          <div class="panel-sub">All flagged issues and opportunities, latest first</div>
+        </div>
+        <div class="text-xs text-muted mono" id="insightCount"></div>
+      </div>
+      <div id="insightsFeed" class="insights-feed"></div>
     </div>
   </div>
+</div>
 
-  <div class="mt-4">
-    <div class="panel-title mb-3" style="margin-top:32px;">Insight Feed</div>
-    <div id="insightsFeed" class="insights-feed"></div>
+<!-- AI generation modal -->
+<div id="aiModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);z-index:200;display:grid;place-items:center;padding:20px;">
+  <div style="background:var(--bg-card);border:1px solid var(--border-strong);border-radius:var(--r-lg);max-width:520px;width:100%;box-shadow:var(--shadow-4);">
+    <div id="aiModalBody"></div>
   </div>
 </div>
 
 <script src="/assets/js/supabase.js"></script>
 <script src="/assets/js/ui.js"></script>
+<script src="/assets/js/notifications.js"></script>
 <script src="/assets/js/dashboard.js"></script>
 <script src="/assets/js/insights-gen.js"></script>
+<script src="/assets/js/ai-loader.js"></script>
 <script src="/assets/js/app-shell.js"></script>
 <script>
 (async function () {
@@ -91,40 +103,51 @@
 
     const { data: reports } = await sb.from('reports').select().eq('user_id', user.id).order('created_at', { ascending: false }).limit(1);
     if (reports && reports[0]) renderReport(reports[0]);
+    else renderEmptyReport();
   }
 
   function renderFeed(items) {
     const target = document.getElementById('insightsFeed');
+    document.getElementById('insightCount').textContent = items.length ? items.length + ' active' : '';
     if (!items.length) {
       target.innerHTML = `
-        <div class="panel" style="text-align:center;padding:40px 24px;">
-          <div class="panel-title mb-2">No insights yet</div>
-          <p class="text-muted mb-3" style="font-size:13px;">Click <b>Generate fresh report</b> to have HELM analyze your data with Claude.</p>
+        <div class="panel" style="text-align:center;padding:48px 24px;">
+          <div class="ai-orb" style="margin: 0 auto 18px;width:64px;height:64px;"><div class="core" style="width:24px;height:24px;"></div></div>
+          <div class="panel-title mb-2" style="font-size:18px;">No insights yet</div>
+          <p class="text-muted mb-4 text-sm" style="max-width:380px;margin:0 auto 18px;">Run your first analysis. HELM will scan 30 days of orders, ad spend and sessions and surface what's worth fixing this week.</p>
+          <button class="btn btn-primary" onclick="document.getElementById('generateBtn').click()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Generate insights
+          </button>
         </div>`;
       return;
     }
-    target.innerHTML = items.map((i) => `
-      <div class="insight sev-${i.severity || 'info'}">
+    target.innerHTML = items.map((i, idx) => `
+      <div class="insight sev-${i.severity || 'info'}" style="animation-delay:${idx * 0.04}s;">
         <div class="insight-head">
-          <span class="tag ${i.severity || 'info'}">${(i.category || 'insight').toUpperCase()}</span>
-          <span class="text-tertiary mono" style="font-size:11px;">${window.HelmUI.relativeTime(i.created_at)}</span>
+          <span class="tag ${i.severity || 'info'}">${(i.category || 'insight').replace('_', ' ')}</span>
+          <span class="text-tertiary text-xs mono">${window.HelmUI.relativeTime(i.created_at)}</span>
           ${i.impact_inr ? `<span class="tag neutral" style="margin-left:auto;">Impact: ${window.HelmUI.fmtCurrency(i.impact_inr)}/mo</span>` : ''}
         </div>
         <div class="insight-title">${esc(i.title)}</div>
         <div class="insight-body">${esc(i.summary || '')}</div>
-        ${i.recommendation ? `<div class="insight-body mt-2"><b style="color:var(--text-primary);">Recommended action:</b> ${esc(i.recommendation)}</div>` : ''}
+        ${i.recommendation ? `<div class="insight-body mt-3"><b style="color:var(--text-primary);">Recommended action: </b>${esc(i.recommendation)}</div>` : ''}
         ${i.metrics ? renderMetrics(i.metrics) : ''}
         <div class="insight-actions">
+          <button class="btn btn-primary btn-sm">Ship this</button>
+          <button class="btn btn-subtle btn-sm js-snooze" data-id="${i.id}">Snooze 7d</button>
           <button class="btn btn-subtle btn-sm js-dismiss" data-id="${i.id}">Dismiss</button>
-          <button class="btn btn-ghost btn-sm js-snooze" data-id="${i.id}">Snooze 7d</button>
         </div>
       </div>
     `).join('');
     target.querySelectorAll('.js-dismiss').forEach((b) => b.addEventListener('click', async () => {
       const sb = await window.HelmSupabase.getClient();
       await sb.from('insights').delete().eq('id', b.dataset.id);
-      window.HelmUI.toast('Dismissed', 'success', 1400);
+      window.HelmUI.toast('Dismissed', 'success', 1200);
       await load();
+    }));
+    target.querySelectorAll('.js-snooze').forEach((b) => b.addEventListener('click', async () => {
+      window.HelmUI.toast('Snoozed for 7 days', 'success', 1400);
     }));
   }
 
@@ -133,23 +156,43 @@
       const obj = typeof m === 'string' ? JSON.parse(m) : m;
       const entries = Object.entries(obj || {});
       if (!entries.length) return '';
-      return `<div class="insight-meta">${entries.map(([k, v]) => `<span><b style="color:var(--text-secondary);">${esc(k)}:</b> ${esc(String(v))}</span>`).join('')}</div>`;
+      return `<div class="insight-meta">${entries.map(([k, v]) => `<span><b>${esc(prettyKey(k))}:</b> ${esc(String(v))}</span>`).join('')}</div>`;
     } catch (_) { return ''; }
   }
+  function prettyKey(k) { return k.replace(/_/g, ' ').replace(/\bpct\b/, '%'); }
 
   function renderReport(r) {
     document.getElementById('reportDate').textContent = window.HelmUI.relativeTime(r.created_at);
-    const md = r.summary_md || r.summary || 'No summary available.';
+    const md = r.summary_md || r.summary || '';
     document.getElementById('weeklyReport').innerHTML = `<div style="font-size:14px;color:var(--text-secondary);line-height:1.75;">${mdToHtml(md)}</div>`;
     const recs = r.recommendations ? (typeof r.recommendations === 'string' ? JSON.parse(r.recommendations) : r.recommendations) : [];
-    document.getElementById('recs').innerHTML = (recs.length ? recs : ['Connect more data sources to unlock recommendations.']).map((x) => `<li>${esc(typeof x === 'string' ? x : x.text || JSON.stringify(x))}</li>`).join('');
+    document.getElementById('recs').innerHTML = (recs.length ? recs : ['Generate insights to populate weekly plays.']).map((x, i) => {
+      const text = typeof x === 'string' ? x : x.text || JSON.stringify(x);
+      return `
+        <li style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-sm);">
+          <span class="mono text-accent" style="font-weight:600;font-size:12px;">0${i + 1}</span>
+          <span>${esc(text)}</span>
+        </li>`;
+    }).join('');
+  }
+
+  function renderEmptyReport() {
+    document.getElementById('weeklyReport').innerHTML = `
+      <div class="text-muted text-sm" style="padding:6px 0;">
+        Your first weekly report will appear after you generate insights.
+      </div>`;
+    document.getElementById('recs').innerHTML = `
+      <li style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-sm);">
+        <span class="text-tertiary mono">·</span>
+        <span class="text-muted text-sm">Hit "Generate fresh report" to populate.</span>
+      </li>`;
   }
 
   function esc(s) { return String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
   function mdToHtml(s) {
     return esc(s)
-      .replace(/^### (.+)$/gm, '<h4 style="color:var(--text-primary);margin:14px 0 6px;">$1</h4>')
-      .replace(/^## (.+)$/gm, '<h3 style="color:var(--text-primary);margin:16px 0 8px;font-size:15px;">$1</h3>')
+      .replace(/^### (.+)$/gm, '<h4 style="color:var(--text-primary);margin:16px 0 6px;font-size:14px;">$1</h4>')
+      .replace(/^## (.+)$/gm,  '<h3 style="color:var(--text-primary);margin:18px 0 8px;font-size:15px;">$1</h3>')
       .replace(/\*\*(.+?)\*\*/g, '<b style="color:var(--text-primary);">$1</b>')
       .replace(/\n/g, '<br>');
   }
@@ -159,32 +202,40 @@
   document.getElementById('generateBtn').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Analyzing your stack…';
-    try {
-      const sb = await window.HelmSupabase.getClient();
-      // Wipe previous run so the UI shows a fresh batch instead of duplicating.
-      const { data: existing } = await sb.from('insights').select().eq('user_id', user.id);
-      for (const row of existing || []) await sb.from('insights').delete().eq('id', row.id);
 
-      const fresh = await window.HelmInsightsGen.generateAll();
-      for (const ins of fresh) await sb.from('insights').insert({ ...ins, user_id: user.id });
+    const modal = document.getElementById('aiModal');
+    modal.classList.remove('hidden');
 
-      const snap = await window.HelmDashboard.loadSnapshot('30d');
-      const metrics = {
-        revenue: snap.kpis.revenue.value, ad_spend: snap.kpis.ad_spend.value, roas: snap.kpis.roas.value,
-        sessions: snap.kpis.sessions.value, orders: snap.kpis.orders.value, cvr: snap.kpis.cvr.value, aov: snap.kpis.aov.value,
-      };
-      const report = window.HelmInsightsGen.generateReport(fresh, metrics);
-      await sb.from('reports').insert({ user_id: user.id, kind: 'weekly', ...report });
+    await window.HelmAILoader.run(document.getElementById('aiModalBody'), {
+      totalMs: 4800,
+      onDone: async () => {
+        try {
+          const sb = await window.HelmSupabase.getClient();
+          const { data: existing } = await sb.from('insights').select().eq('user_id', user.id);
+          for (const row of existing || []) await sb.from('insights').delete().eq('id', row.id);
 
-      window.HelmUI.toast('Fresh insights generated', 'success');
-      await load();
-    } catch (err) {
-      window.HelmUI.toast(err.message || 'Could not generate insights', 'error', 5000);
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Generate fresh report';
-    }
+          const fresh = await window.HelmInsightsGen.generateAll();
+          for (const ins of fresh) await sb.from('insights').insert({ ...ins, user_id: user.id });
+
+          const snap = await window.HelmDashboard.loadSnapshot('30d');
+          const metrics = {
+            revenue: snap.kpis.revenue.value, ad_spend: snap.kpis.ad_spend.value, roas: snap.kpis.roas.value,
+            sessions: snap.kpis.sessions.value, orders: snap.kpis.orders.value, cvr: snap.kpis.cvr.value, aov: snap.kpis.aov.value,
+          };
+          const report = window.HelmInsightsGen.generateReport(fresh, metrics);
+          await sb.from('reports').insert({ user_id: user.id, kind: 'weekly', ...report });
+
+          modal.classList.add('hidden');
+          window.HelmUI.toast('Fresh insights generated', 'success');
+          await load();
+        } catch (err) {
+          modal.classList.add('hidden');
+          window.HelmUI.toast(err.message || 'Could not generate insights', 'error', 5000);
+        }
+      },
+    });
+
+    btn.disabled = false;
   });
 
   await load();
