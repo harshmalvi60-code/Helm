@@ -3,6 +3,20 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<!-- Shopify App Store install entry point. When a merchant clicks
+     "Install" from the App Store, Shopify hits this URL with
+     ?shop=<store>.myshopify.com — bounce them straight into the OAuth
+     flow so they never see the marketing landing. This runs
+     synchronously in <head> before any rendering. -->
+<script>
+(function () {
+  try {
+    var shop = (new URLSearchParams(window.location.search).get('shop') || '').toLowerCase();
+    if (!/^[a-z0-9][a-z0-9-]{1,59}\.myshopify\.com$/.test(shop)) return;
+    window.location.replace('/api/integrations/shopify/install?shop=' + encodeURIComponent(shop));
+  } catch (_) {}
+})();
+</script>
 <title>HELM — The AI Growth Operator for D2C Brands</title>
 <meta name="description" content="HELM connects to Shopify, Meta Ads, Klaviyo, Google Ads & GA4 — then continuously tells you where you're losing revenue and what to fix next." />
 

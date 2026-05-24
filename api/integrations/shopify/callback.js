@@ -75,12 +75,14 @@ module.exports = async (req, res) => {
     clearStateCookie(res);
     res.statusCode = 302;
     res.setHeader('Location', '/onboarding?connected=shopify');
+    res.setHeader('Cache-Control', 'no-store');
     res.end();
   } catch (e) {
     console.error('shopify/callback error', e);
     clearStateCookie(res);
     res.statusCode = 302;
     res.setHeader('Location', '/onboarding?error=' + encodeURIComponent(e.message || 'Shopify connection failed'));
+    res.setHeader('Cache-Control', 'no-store');
     res.end();
   }
 };
