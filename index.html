@@ -3,6 +3,20 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<!-- Shopify App Store install entry point. When a merchant clicks
+     "Install" from the App Store, Shopify hits this URL with
+     ?shop=<store>.myshopify.com — bounce them straight into the OAuth
+     flow so they never see the marketing landing. This runs
+     synchronously in <head> before any rendering. -->
+<script>
+(function () {
+  try {
+    var shop = (new URLSearchParams(window.location.search).get('shop') || '').toLowerCase();
+    if (!/^[a-z0-9][a-z0-9-]{1,59}\.myshopify\.com$/.test(shop)) return;
+    window.location.replace('/api/integrations/shopify/install?shop=' + encodeURIComponent(shop));
+  } catch (_) {}
+})();
+</script>
 <title>HELM — The AI Growth Operator for D2C Brands</title>
 <meta name="description" content="HELM connects to Shopify, Meta Ads, Klaviyo, Google Ads & GA4 — then continuously tells you where you're losing revenue and what to fix next." />
 
@@ -1184,10 +1198,10 @@
     <ul class="nav-links">
       <li><a href="#monitor">Product</a></li>
       <li><a href="#how">How it works</a></li>
-      <li><a href="#pricing">Pricing</a></li>
-      <li><a href="#">Docs</a></li>
+      <li><a href="/pricing">Pricing</a></li>
+      <li><a href="/login">Sign in</a></li>
     </ul>
-    <a href="#cta" class="btn btn-primary">Get Free Audit</a>
+    <a href="/signup" class="btn btn-primary">Start Free Trial</a>
   </div>
 </nav>
 
@@ -1203,11 +1217,11 @@
         <h1>Your brand is leaking revenue.<br><span class="accent">HELM</span> finds it.</h1>
         <p class="subhead">HELM connects to every tool you run — Shopify, Meta Ads, Klaviyo, Google Ads, GA4 — and tells you, in plain English, exactly where you're losing money and what to do next. Stop checking dashboards. Start getting decisions.</p>
         <div class="hero-ctas">
-          <a href="#cta" class="btn btn-primary">
-            Get Free Growth Audit
+          <a href="/signup" class="btn btn-primary">
+            Start 14-Day Free Trial
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
           </a>
-          <a href="#feed" class="btn btn-ghost">See it in action</a>
+          <a href="/dashboard" class="btn btn-ghost">See live dashboard</a>
         </div>
         <div class="hero-stats">
           <div>
@@ -1520,7 +1534,7 @@
           <span class="price-period">/month</span>
         </div>
         <div class="price-note">Billed annually · 14-day free audit</div>
-        <a href="#cta" class="btn btn-ghost price-cta">Start Free Audit</a>
+        <a href="/signup" class="btn btn-ghost price-cta">Start Free Trial</a>
         <ul class="price-features">
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>All 8 monitoring vectors</li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>All integrations included</li>
@@ -1539,7 +1553,7 @@
           <span class="price-period">/month</span>
         </div>
         <div class="price-note">Billed annually · Dedicated growth strategist</div>
-        <a href="#cta" class="btn btn-primary price-cta">Start Free Audit</a>
+        <a href="/signup" class="btn btn-primary price-cta">Start Free Trial</a>
         <ul class="price-features">
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Everything in Operator</li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Real-time alerts (not just daily)</li>
@@ -1557,7 +1571,7 @@
           <span class="price-num">Custom</span>
         </div>
         <div class="price-note">Annual contracts · Done-with-you implementation</div>
-        <a href="#cta" class="btn btn-ghost price-cta">Talk to Founders</a>
+        <a href="/pricing" class="btn btn-ghost price-cta">Contact Sales</a>
         <ul class="price-features">
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Everything in Scale</li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Custom models for your category</li>
@@ -1581,10 +1595,10 @@
       </span>
       <h2 class="reveal">Stop running your brand on <span class="accent">instinct</span>.</h2>
       <p class="reveal">Drop your email. HELM connects to your stack, runs a full audit, and ships you a personalized leak report within 24 hours. If it doesn't find at least ₹1L/month in recoverable revenue, you owe us nothing.</p>
-      <form class="email-capture reveal" onsubmit="event.preventDefault(); alert('Audit request received. We\\'ll be in touch within 24h.');">
+      <form class="email-capture reveal" onsubmit="event.preventDefault(); const e=this.querySelector('input').value; window.location.href='/signup?email='+encodeURIComponent(e);">
         <input type="email" placeholder="founder@yourbrand.com" required />
         <button type="submit" class="btn btn-primary">
-          Get My Audit
+          Start Free Trial
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </button>
       </form>

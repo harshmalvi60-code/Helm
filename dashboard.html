@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard · HELM</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body class="app-bg">
+
+<div id="app-root">
+  <div class="page-body">
+    <div class="page-head">
+      <div>
+        <h1>Good <span id="timeOfDay">morning</span>, <span class="text-accent" id="firstName">Founder</span></h1>
+        <p class="subtitle">Here's what's happening across your store. <span id="lastSync" class="text-tertiary mono"></span></p>
+      </div>
+      <div class="page-actions" id="topActions">
+        <div class="seg" id="rangeSeg">
+          <button data-r="7d">7d</button>
+          <button data-r="30d" class="on">30d</button>
+          <button data-r="90d">90d</button>
+        </div>
+        <input type="hidden" id="rangeSel" value="30d" />
+        <button class="btn btn-subtle" id="refreshBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+          Sync
+        </button>
+        <a href="/insights" class="btn btn-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          AI Insights
+        </a>
+      </div>
+    </div>
+
+    <!-- EMPTY: not connected -->
+    <div id="emptyState" class="hidden">
+      <div class="panel" style="text-align:center;padding:64px 28px;background:linear-gradient(180deg, rgba(0,255,136,0.03) 0%, var(--bg-card) 80%);border:1px solid var(--border-accent);">
+        <div class="ai-orb" style="margin: 0 auto 22px;width:84px;height:84px;"><div class="core" style="width:32px;height:32px;"></div></div>
+        <h2 id="emptyTitle" style="font-size:24px;margin-bottom:8px;letter-spacing:-0.022em;">Connect your Shopify store to begin</h2>
+        <p id="emptyBody" class="text-muted" style="max-width:480px;margin:0 auto 24px;line-height:1.55;font-size:14px;">
+          HELM reads orders, products, customers and inventory from your live Shopify data — no mock numbers, no fake insights. Connect in under 30 seconds.
+        </p>
+        <div class="flex gap-3 justify-center flex-wrap" style="margin-bottom:28px;">
+          <button class="btn btn-primary btn-lg" id="connectShopifyBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2v6"/><path d="M15 2v6"/><path d="M7 8h10v4a5 5 0 0 1-10 0z"/><path d="M12 17v5"/></svg>
+            <span id="connectShopifyLabel">Connect Shopify</span>
+          </button>
+          <a href="/onboarding" class="btn btn-ghost btn-lg">See all integrations →</a>
+        </div>
+        <div class="flex gap-6 justify-center text-xs text-tertiary mono flex-wrap">
+          <span class="flex items-center gap-2"><span class="status-dot live"></span> Read-only access</span>
+          <span class="flex items-center gap-2"><span class="status-dot live"></span> Tokens stored server-side</span>
+          <span class="flex items-center gap-2"><span class="status-dot live"></span> Revoke anytime</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ERROR -->
+    <div id="errorState" class="hidden">
+      <div class="alert danger">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="errorText">Could not load Shopify data.</span>
+        <button class="btn btn-subtle btn-sm" id="errorRetry" style="margin-left:auto;">Retry</button>
+      </div>
+    </div>
+
+    <!-- DATA -->
+    <div id="dataState" class="hidden">
+      <div class="alert info" id="storeBanner" style="display:none;">
+        <span class="status-dot live"></span>
+        <span>Live data from <b id="storeName">—</b> <span class="text-tertiary mono" id="storeShop"></span></span>
+      </div>
+
+      <div class="kpi-grid" id="kpiRow">
+        <div class="kpi-skeleton"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line med" style="height:24px;margin-top:10px;"></div><div class="skeleton skeleton-line short"></div></div>
+        <div class="kpi-skeleton"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line med" style="height:24px;margin-top:10px;"></div><div class="skeleton skeleton-line short"></div></div>
+        <div class="kpi-skeleton"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line med" style="height:24px;margin-top:10px;"></div><div class="skeleton skeleton-line short"></div></div>
+        <div class="kpi-skeleton"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line med" style="height:24px;margin-top:10px;"></div><div class="skeleton skeleton-line short"></div></div>
+      </div>
+      <div class="kpi-grid" id="kpiRow2" style="margin-top:0;"></div>
+
+      <div class="grid-2 mt-4">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Revenue</div>
+              <div class="panel-sub">Daily totals from Shopify orders</div>
+            </div>
+          </div>
+          <div class="chart-box"><canvas id="revChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Revenue by Channel</div>
+              <div class="panel-sub">Attribution mix · last sync</div>
+            </div>
+          </div>
+          <div class="chart-box"><canvas id="channelChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid-2 mt-4">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Order Funnel</div>
+              <div class="panel-sub" id="funnelSub">Order → paid → fulfilled · drop-off at each step</div>
+            </div>
+          </div>
+          <div id="funnel"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Orders / Day</div>
+              <div class="panel-sub">Daily order volume from Shopify</div>
+            </div>
+          </div>
+          <div class="chart-box"><canvas id="ordersChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid-2 mt-4">
+        <div class="panel flush">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Channel Performance</div>
+              <div class="panel-sub">Revenue by source · connect Meta + Google for full attribution</div>
+            </div>
+          </div>
+          <div id="channelTable"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Latest AI Insights</div>
+              <div class="panel-sub">Generated from your live data</div>
+            </div>
+            <a href="/insights" class="btn btn-subtle btn-sm">All →</a>
+          </div>
+          <div id="latestInsights" class="insights-feed">
+            <div class="insight">
+              <div class="skeleton skeleton-line med"></div>
+              <div class="skeleton skeleton-line long" style="height:18px;margin-top:10px;"></div>
+              <div class="skeleton skeleton-line short"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel flush mt-4">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Top Products</div>
+            <div class="panel-sub">By revenue in the selected range</div>
+          </div>
+        </div>
+        <div id="productTable"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="/assets/js/supabase.js"></script>
+<script src="/assets/js/ui.js"></script>
+<script src="/assets/js/notifications.js"></script>
+<script src="/assets/js/dashboard.js"></script>
+<script src="/assets/js/integrations.js"></script>
+<script src="/assets/js/app-shell.js"></script>
+<script>
+(async function () {
+  const ctx = await window.HelmShell.mount({ active: '/dashboard' });
+  if (!ctx) return;
+  const { user } = ctx;
+
+  const name = user.user_metadata?.full_name || user.user_metadata?.brand_name || (user.email ? user.email.split('@')[0] : 'Founder');
+  document.getElementById('firstName').textContent = name.split(' ')[0];
+  const hour = new Date().getHours();
+  document.getElementById('timeOfDay').textContent = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+
+  let charts = {};
+  const D = window.HelmDashboard;
+  const empty   = document.getElementById('emptyState');
+  const errBox  = document.getElementById('errorState');
+  const errMsg  = document.getElementById('errorText');
+  const dataBox = document.getElementById('dataState');
+  const banner  = document.getElementById('storeBanner');
+
+  function showState(which) {
+    [empty, errBox, dataBox].forEach((el) => el.classList.add('hidden'));
+    if (which === 'empty') empty.classList.remove('hidden');
+    if (which === 'error') errBox.classList.remove('hidden');
+    if (which === 'data')  dataBox.classList.remove('hidden');
+    // Hide range/sync controls when not connected
+    document.getElementById('topActions').style.opacity = which === 'data' ? '1' : '0.4';
+    document.getElementById('topActions').style.pointerEvents = which === 'data' ? '' : 'none';
+  }
+
+  async function refresh(range) {
+    try {
+      const snap = await D.loadSnapshot(range);
+      if (!snap || snap.connected === false) {
+        if (snap?.reason === 'shopify_revoked') {
+          document.getElementById('emptyTitle').textContent = 'Shopify access was revoked';
+          document.getElementById('emptyBody').textContent  = 'HELM lost access to ' + (snap.shop || 'your store') + '. Reconnect to keep your dashboard live.';
+          document.getElementById('connectShopifyLabel').textContent = 'Reconnect Shopify';
+        }
+        showState('empty');
+        return;
+      }
+      showState('data');
+
+      // Store banner
+      banner.style.display = '';
+      document.getElementById('storeName').textContent = snap.shopName || snap.shop || 'Your store';
+      document.getElementById('storeShop').textContent = snap.shop || '';
+
+      document.getElementById('kpiRow').innerHTML = D.renderKpis(snap);
+      document.getElementById('kpiRow2').innerHTML = D.renderKpiRow2(snap);
+      document.getElementById('lastSync').textContent = '· synced ' + window.HelmUI.relativeTime(snap.generated_at);
+
+      Object.values(charts).forEach((c) => c?.destroy?.());
+      charts.rev     = D.drawRevenueChart(document.getElementById('revChart'), snap.series);
+      charts.orders  = drawOrdersChart(document.getElementById('ordersChart'), snap.series);
+      charts.channel = D.drawChannelChart(document.getElementById('channelChart'), snap.channels);
+      D.renderFunnel(document.getElementById('funnel'), snap.funnel);
+      D.renderChannelTable(document.getElementById('channelTable'), snap.channels);
+      D.renderProductTable(document.getElementById('productTable'), snap.products);
+      D.countUpVisible();
+    } catch (e) {
+      console.error(e);
+      if (e.status === 401) { window.location.href = '/login'; return; }
+      errMsg.textContent = e.message || 'Could not load data';
+      showState('error');
+    }
+  }
+
+  function drawOrdersChart(canvas, series) {
+    if (!window.Chart) return null;
+    return new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: series.map((d) => d.date.slice(5)),
+        datasets: [{
+          label: 'Orders',
+          data: series.map((d) => d.orders),
+          backgroundColor: 'rgba(0,255,136,0.6)',
+          hoverBackgroundColor: '#00FF88',
+          borderRadius: 4, borderSkipped: false,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#14171C', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1,
+            padding: 12, cornerRadius: 8,
+            titleFont: { family: 'Inter', size: 12, weight: '600' },
+            bodyFont:  { family: 'JetBrains Mono', size: 12 },
+            titleColor: '#F0F2F5', bodyColor: '#8B91A0',
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#4F5663', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 8 } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#4F5663', font: { family: 'JetBrains Mono', size: 10 } } },
+        },
+      },
+    });
+  }
+
+  async function loadLatestInsights() {
+    const sb = await window.HelmSupabase.getClient();
+    const { data } = await sb.from('insights').select().eq('user_id', user.id).order('created_at', { ascending: false }).limit(3);
+    const target = document.getElementById('latestInsights');
+    if (!data || !data.length) {
+      target.innerHTML = `
+        <div class="insight sev-info">
+          <div class="insight-head"><span class="tag info">START HERE</span></div>
+          <div class="insight-title">Generate your first AI report</div>
+          <div class="insight-body">HELM will analyze your last 30 days of Shopify data and surface what's worth fixing this week.</div>
+          <div class="insight-actions"><a href="/insights" class="btn btn-primary btn-sm">Generate insights →</a></div>
+        </div>`;
+      return;
+    }
+    target.innerHTML = data.map((i) => `
+      <div class="insight sev-${i.severity || 'info'}">
+        <div class="insight-head">
+          <span class="tag ${i.severity || 'info'}">${(i.category || 'insight').replace('_', ' ')}</span>
+          <span class="text-tertiary text-xs mono">${window.HelmUI.relativeTime(i.created_at)}</span>
+          ${i.impact_inr ? `<span class="tag neutral" style="margin-left:auto;">${window.HelmUI.fmtCurrency(i.impact_inr)}/mo</span>` : ''}
+        </div>
+        <div class="insight-title">${esc(i.title)}</div>
+        <div class="insight-body">${esc(i.summary || '')}</div>
+      </div>
+    `).join('');
+  }
+  function esc(s) { return String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+  document.querySelectorAll('#rangeSeg button').forEach((b) => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#rangeSeg button').forEach((x) => x.classList.remove('on'));
+      b.classList.add('on');
+      document.getElementById('rangeSel').value = b.dataset.r;
+      refresh(b.dataset.r);
+    });
+  });
+
+  document.getElementById('refreshBtn').addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true;
+    e.currentTarget.innerHTML = '<span class="spinner"></span> Syncing…';
+    await refresh(document.getElementById('rangeSel').value);
+    window.HelmUI.toast('Data refreshed', 'success', 1500);
+    e.currentTarget.disabled = false;
+    e.currentTarget.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg> Sync';
+  });
+
+  document.getElementById('errorRetry').addEventListener('click', () => refresh(document.getElementById('rangeSel').value));
+
+  document.getElementById('connectShopifyBtn').addEventListener('click', () => window.HelmIntegrations.startConnect('shopify'));
+
+  if (window.HelmUI.getParam('onboarded') === '1') {
+    window.HelmUI.toast('Stack connected — pulling your live data', 'success', 2500);
+    window.HelmUI.setParam('onboarded', null);
+  }
+  if (window.HelmUI.getParam('connected') === 'shopify') {
+    window.HelmUI.toast('Shopify connected', 'success', 2000);
+    window.HelmUI.setParam('connected', null);
+  }
+
+  await refresh('30d');
+  loadLatestInsights();
+})();
+</script>
+</body>
+</html>

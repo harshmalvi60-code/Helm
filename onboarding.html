@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Welcome to HELM · Setup</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body class="app-bg">
+
+<div class="wizard-wrap">
+  <a href="/dashboard" class="auth-logo"><span class="mark"></span><span>HELM</span></a>
+
+  <div class="wizard-progress" id="progress">
+    <div class="wp-step done"></div>
+    <div class="wp-step active"></div>
+    <div class="wp-step"></div>
+    <div class="wp-step"></div>
+  </div>
+
+  <div id="wizardBody"></div>
+</div>
+
+<script src="/assets/js/supabase.js"></script>
+<script src="/assets/js/ui.js"></script>
+<script src="/assets/js/integrations.js"></script>
+<script src="/assets/js/dashboard.js"></script>
+<script src="/assets/js/insights-gen.js"></script>
+<script src="/assets/js/ai-loader.js"></script>
+<script>
+(async function () {
+  const user = await window.HelmSupabase.requireAuth();
+  if (!user) return;
+
+  const sb = await window.HelmSupabase.getClient();
+  const state = {
+    step: 0,
+    brand: user.user_metadata?.brand_name || '',
+    industry: '',
+    monthlyGmv: '',
+    goal: '',
+  };
+
+  const STEPS = [tellUsAboutYou, primaryGoal, connectStack, runAnalysis];
+
+  function render() {
+    document.querySelectorAll('#progress .wp-step').forEach((el, i) => {
+      el.classList.toggle('done', i < state.step);
+      el.classList.toggle('active', i === state.step);
+    });
+    const body = document.getElementById('wizardBody');
+    body.innerHTML = '';
+    body.appendChild(STEPS[state.step]());
+  }
+
+  // ============ STEP 1: about you ============
+  function tellUsAboutYou() {
+    const el = document.createElement('div');
+    el.className = 'wizard-step';
+    el.innerHTML = `
+      <h2>Tell us about your brand</h2>
+      <p class="lede">HELM tailors its analysis to your category and stage. This only takes 20 seconds.</p>
+
+      <div class="form-group">
+        <label class="form-label">Brand name</label>
+        <input class="form-input" id="brandInp" placeholder="Acme Coffee Co." value="${escAttr(state.brand)}" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <div class="choice-grid" id="industryGrid">
+          ${['Coffee & Beverage','Apparel','Beauty & Skincare','Health & Wellness','Home & Lifestyle','Food','Electronics','Other'].map((x) => `
+            <div class="choice ${state.industry === x ? 'active' : ''}" data-v="${escAttr(x)}">
+              <div class="ch-icon">${industryIcon(x)}</div>
+              <div><div class="ch-title">${x}</div></div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Monthly GMV</label>
+        <div class="choice-grid" id="gmvGrid">
+          ${['< ₹5L','₹5L – ₹25L','₹25L – ₹1Cr','₹1Cr – ₹5Cr','₹5Cr+'].map((x) => `
+            <div class="choice ${state.monthlyGmv === x ? 'active' : ''}" data-v="${escAttr(x)}">
+              <div><div class="ch-title">${x}</div></div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="wizard-foot">
+        <a href="/dashboard" class="text-muted text-sm">Skip setup for now</a>
+        <button class="btn btn-primary btn-lg" id="nextBtn" ${state.brand && state.industry && state.monthlyGmv ? '' : 'disabled'}>Continue →</button>
+      </div>
+    `;
+
+    el.querySelector('#brandInp').addEventListener('input', (e) => {
+      state.brand = e.target.value;
+      el.querySelector('#nextBtn').disabled = !(state.brand && state.industry && state.monthlyGmv);
+    });
+    el.querySelectorAll('#industryGrid .choice').forEach((c) => c.addEventListener('click', () => {
+      el.querySelectorAll('#industryGrid .choice').forEach((x) => x.classList.remove('active'));
+      c.classList.add('active');
+      state.industry = c.dataset.v;
+      el.querySelector('#nextBtn').disabled = !(state.brand && state.industry && state.monthlyGmv);
+    }));
+    el.querySelectorAll('#gmvGrid .choice').forEach((c) => c.addEventListener('click', () => {
+      el.querySelectorAll('#gmvGrid .choice').forEach((x) => x.classList.remove('active'));
+      c.classList.add('active');
+      state.monthlyGmv = c.dataset.v;
+      el.querySelector('#nextBtn').disabled = !(state.brand && state.industry && state.monthlyGmv);
+    }));
+    el.querySelector('#nextBtn').addEventListener('click', () => { state.step = 1; render(); });
+    return el;
+  }
+
+  // ============ STEP 2: goal ============
+  function primaryGoal() {
+    const el = document.createElement('div');
+    el.className = 'wizard-step';
+    el.innerHTML = `
+      <h2>What's your #1 goal right now?</h2>
+      <p class="lede">HELM ranks insights by impact toward this goal. You can change this anytime in settings.</p>
+
+      <div class="choice-grid">
+        ${[
+          { v: 'roas',       t: 'Improve blended ROAS',     d: 'Lower CAC, scale paid efficiently',  i: '↗' },
+          { v: 'cvr',        t: 'Lift conversion rate',     d: 'Fix funnel drop-offs',                i: '%' },
+          { v: 'ltv',        t: 'Grow customer LTV',        d: 'Repeat rate, retention flows',        i: '♻' },
+          { v: 'scale',      t: 'Scale revenue 2-3x',       d: 'Expand channels, hit new markets',    i: '⚡' },
+        ].map((x) => `
+          <div class="choice ${state.goal === x.v ? 'active' : ''}" data-v="${x.v}">
+            <div class="ch-icon"><span class="mono">${x.i}</span></div>
+            <div>
+              <div class="ch-title">${x.t}</div>
+              <div class="ch-desc">${x.d}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="wizard-foot">
+        <button class="btn btn-ghost" id="backBtn">← Back</button>
+        <button class="btn btn-primary btn-lg" id="nextBtn" ${state.goal ? '' : 'disabled'}>Continue →</button>
+      </div>
+    `;
+    el.querySelectorAll('.choice').forEach((c) => c.addEventListener('click', () => {
+      el.querySelectorAll('.choice').forEach((x) => x.classList.remove('active'));
+      c.classList.add('active');
+      state.goal = c.dataset.v;
+      el.querySelector('#nextBtn').disabled = false;
+    }));
+    el.querySelector('#backBtn').addEventListener('click', () => { state.step = 0; render(); });
+    el.querySelector('#nextBtn').addEventListener('click', () => { state.step = 2; render(); });
+    return el;
+  }
+
+  // ============ STEP 3: connect stack ============
+  function connectStack() {
+    const el = document.createElement('div');
+    el.className = 'wizard-step';
+    el.innerHTML = `
+      <h2>Connect your growth stack</h2>
+      <p class="lede">HELM needs read-only access to your sales, ad and analytics tools. We never run ads, write to your store or email your customers.</p>
+
+      <div class="integ-grid" id="integGrid"></div>
+
+      <div class="flex items-center mt-5" style="font-size:13px;color:var(--text-secondary);">
+        <span><span id="connectedCount">0</span> of <span id="totalCount">5</span> connected</span>
+        <span class="text-tertiary" style="margin: 0 8px;">·</span>
+        <span class="text-tertiary">Shopify is required to see live data</span>
+      </div>
+
+      <div class="wizard-foot">
+        <button class="btn btn-ghost" id="backBtn">← Back</button>
+        <button class="btn btn-primary btn-lg" id="nextBtn" disabled>Run first analysis →</button>
+      </div>
+    `;
+
+    const grid = el.querySelector('#integGrid');
+    document.getElementById('totalCount') && (document.getElementById('totalCount').textContent = window.HelmIntegrations.CATALOG.length);
+
+    async function renderGrid() {
+      const conns = await window.HelmIntegrations.listConnections(user.id);
+      grid.innerHTML = window.HelmIntegrations.CATALOG.map((i) => window.HelmIntegrations.renderCard(i, conns[i.id])).join('');
+      const connected = Object.values(conns).filter((c) => c.status === 'connected');
+      el.querySelector('#connectedCount').textContent = connected.length;
+      el.querySelector('#totalCount').textContent = window.HelmIntegrations.CATALOG.length;
+      const hasShopify = connected.some((c) => c.provider === 'shopify');
+      el.querySelector('#nextBtn').disabled = !hasShopify;
+
+      grid.querySelectorAll('.js-connect').forEach((b) => b.addEventListener('click', async () => {
+        b.disabled = true; b.innerHTML = '<span class="spinner"></span> Connecting…';
+        try {
+          await window.HelmIntegrations.startConnect(b.dataset.p);
+          await renderGrid();
+        } catch (e) { window.HelmUI.toast(e.message || 'Failed', 'error'); b.disabled = false; }
+      }));
+      grid.querySelectorAll('.js-disconnect').forEach((b) => b.addEventListener('click', async () => {
+        if (!confirm('Disconnect ' + b.dataset.p + '?')) return;
+        await window.HelmIntegrations.disconnect(b.dataset.p, user.id);
+        await renderGrid();
+      }));
+    }
+    renderGrid();
+
+    el.querySelector('#backBtn').addEventListener('click', () => { state.step = 1; render(); });
+    el.querySelector('#nextBtn').addEventListener('click', async () => {
+      // Persist brand info best-effort
+      try {
+        await sb.from('organizations').upsert({
+          user_id: user.id, name: state.brand,
+          metadata: { industry: state.industry, monthly_gmv: state.monthlyGmv, primary_goal: state.goal },
+        }, { onConflict: 'user_id' });
+      } catch (_) {}
+      state.step = 3; render();
+    });
+
+    return el;
+  }
+
+  // ============ STEP 4: run analysis ============
+  function runAnalysis() {
+    const el = document.createElement('div');
+    el.className = 'wizard-step';
+    el.innerHTML = `<div id="loadHost"></div>`;
+    setTimeout(async () => {
+      await window.HelmAILoader.run(el.querySelector('#loadHost'), {
+        totalMs: 5200,
+        onDone: async () => {
+          try {
+            // Insights pull from /api/shopify/analytics → real data only.
+            const snap = await window.HelmDashboard.loadSnapshot('30d');
+            if (snap && snap.connected) {
+              const fresh = window.HelmInsightsGen.buildInsights(snap);
+              for (const ins of fresh) await sb.from('insights').insert({ ...ins, user_id: user.id });
+              const report = window.HelmInsightsGen.generateReport(fresh, snap);
+              await sb.from('reports').insert({ user_id: user.id, kind: 'weekly', ...report });
+            }
+          } catch (e) { console.warn('analysis after onboarding failed', e); }
+          window.location.href = '/dashboard?onboarded=1';
+        },
+      });
+    }, 50);
+    return el;
+  }
+
+  function industryIcon(name) {
+    const map = { 'Coffee & Beverage': '☕', 'Apparel': '👕', 'Beauty & Skincare': '✨', 'Health & Wellness': '🌿', 'Home & Lifestyle': '🛋', 'Food': '🍱', 'Electronics': '⚡', 'Other': '◦' };
+    return `<span style="font-size:18px;">${map[name] || '◦'}</span>`;
+  }
+  function escAttr(s) { return String(s || '').replace(/"/g, '&quot;'); }
+
+  render();
+})();
+</script>
+</body>
+</html>

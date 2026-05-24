@@ -2,117 +2,184 @@
 
 **The AI Growth Operator for D2C Brands.**
 
-Single-page landing site. Zero dependencies. Deploys to Vercel in 90 seconds.
+External multi-tenant SaaS dashboard. Each tenant signs up at our
+domain, OAuths their Shopify store, and uses the live dashboard at
+`helm.app/dashboard` — **not** embedded in the Shopify admin iframe.
+Real Shopify orders, real analytics, zero mock data. 4 lightweight
+Vercel serverless functions; everything else is static HTML/JS.
+Fits on Vercel Hobby.
 
 ---
 
-## Quick deploy (zero-config)
+## Architecture
 
-This repo is a pure static site. Vercel auto-detects and ships it. No build step.
+```
+Browser (per-tenant)
+   │
+   │  Supabase Auth (email + Google OAuth, browser SDK + PKCE)
+   ▼
+HELM dashboard at helm.app
+   │
+   ├── /api/config                                  → public Supabase keys
+   ├── /api/integrations/shopify/install            → 302 to Shopify OAuth
+   │       │
+   │       ▼
+   │   shopify accounts.shopify.com authorize
+   │       │
+   │       ▼
+   │   /api/integrations/shopify/callback           → HMAC + state verify
+   │                                                  exchange code
+   │                                                  store token server-side
+   │                                                  per user_id (tenant)
+   │
+   └── /api/shopify/analytics                       → live Admin API fetch
+                                                     scoped to caller's tenant
+```
 
-### Step 1 — Push to GitHub
+**Multi-tenant**: every row in `integrations`, `insights`, `reports`,
+`notifications` carries `user_id` and is gated by Supabase RLS. Each
+tenant's Shopify token is stored in their own row; the analytics
+endpoint reads the caller's row via service-role + their JWT, never
+sees other tenants' data.
 
-If you have `git` installed locally:
+**Not embedded**: HELM is a standalone external app. We do NOT load
+inside the Shopify admin iframe — no App Bridge, no iframe escape
+gymnastics, no session-token auth. The Shopify Partner app is
+configured with **embedded = false**.
 
+## Folder map
+
+```
+.
+├── index.html                                # Landing (with App Store install hook)
+├── login.html / signup.html
+├── onboarding.html                           # 4-step wizard
+├── dashboard.html                            # Real Shopify data only
+├── insights.html / reports.html
+├── profile.html / settings.html / pricing.html
+├── setup-required.html                       # Shown when env missing
+├── assets/
+│   ├── css/app.css
+│   └── js/{supabase, ui, app-shell, dashboard, insights-gen,
+│            integrations, notifications, ai-loader}.js
+├── api/
+│   ├── config.js                             # public config delivery
+│   ├── integrations/shopify/install.js       # OAuth start (302)
+│   ├── integrations/shopify/callback.js      # token exchange + store
+│   └── shopify/analytics.js                  # live Admin API → snapshot
+├── lib/
+│   ├── supabase.js                           # REST + service-role helpers
+│   ├── oauth.js                              # HMAC state cookies
+│   └── shopify.js                            # Admin API client + HMAC verify
+├── scripts/setup-supabase.js                 # one-command schema apply
+├── supabase/schema.sql                       # tables, RLS, token revoke
+├── vercel.json / package.json / .env.example
+```
+
+## Setup
+
+### 1. Supabase project
+1. Create a project at <https://supabase.com>.
+2. Copy from `Settings → API`: URL, anon key, service-role key.
+3. Get a personal access token at
+   <https://supabase.com/dashboard/account/tokens> → `SUPABASE_ACCESS_TOKEN`
+4. Copy the project ref (the subdomain) → `SUPABASE_PROJECT_REF`
+
+### 2. Apply the schema
 ```bash
-git init
-git add .
-git commit -m "Initial commit: HELM landing"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/helm-landing.git
-git push -u origin main
+cp .env.example .env.local       # paste the values from step 1
+npm run setup
+```
+Applies `supabase/schema.sql` via the Supabase Management API. Creates
+all tables, enables RLS, and revokes anon/authenticated SELECT on the
+`access_token` column. Idempotent.
+
+### 3. Shopify Partner app
+1. <https://partners.shopify.com> → Apps → Create app (Custom or Public).
+2. **App URL**: `https://your-domain/` (landing — the install hook
+   detects `?shop=` and bounces to OAuth)
+3. **Allowed redirection URL**:
+   `https://your-domain/api/integrations/shopify/callback`
+4. **Embedded app: OFF** (this is a standalone external SaaS, not
+   an embedded admin app)
+5. Copy client ID + secret → `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET`.
+
+### 4. OAuth state secret
+```bash
+openssl rand -hex 32     # → HELM_OAUTH_SECRET
 ```
 
-**Or use GitHub's web UI (no terminal):**
+### 5. Deploy
+Set all env vars (see `.env.example`) in
+**Vercel → Project Settings → Environment Variables**, then:
+```bash
+npx vercel --prod
+```
 
-1. Go to [github.com/new](https://github.com/new)
-2. Name the repo `helm-landing`. Set it private or public — your call.
-3. Don't initialize with a README (we have one).
-4. Click **Create repository**.
-5. On the next screen, click **"uploading an existing file"**.
-6. Drag every file from this folder into the upload area:
-   - `index.html`
-   - `favicon.svg`
-   - `vercel.json`
-   - `robots.txt`
-   - `.gitignore`
-   - `README.md`
-7. Commit changes.
-
-### Step 2 — Deploy on Vercel
-
-1. Go to [vercel.com/new](https://vercel.com/new)
-2. Sign in with GitHub if you haven't already.
-3. Find `helm-landing` in your repo list and click **Import**.
-4. **Framework Preset:** leave as "Other" (Vercel auto-detects static).
-5. **Root Directory:** leave as `./`
-6. **Build Command:** leave empty.
-7. **Output Directory:** leave empty.
-8. Click **Deploy**.
-
-That's it. You'll have a live URL like `helm-landing-yourname.vercel.app` within 30 seconds.
-
-### Step 3 — Connect your custom domain
-
-Once HELM has a real domain (e.g. `usehelm.in`, `helm.ai`, etc.):
-
-1. In your Vercel project, go to **Settings → Domains**.
-2. Type your domain, click **Add**.
-3. Vercel shows you the DNS records to add (an `A` record and/or a `CNAME`).
-4. Add those records in your domain registrar's DNS panel (GoDaddy, Namecheap, BigRock, etc.).
-5. Wait 5-30 minutes. SSL is auto-provisioned.
+No HTML edits required — `/api/config` delivers the public keys to the
+browser on every page load.
 
 ---
 
-## Editing content
-
-Everything lives in `index.html`. Open it in any code editor (VS Code, Sublime, even Notepad). Search-and-replace works fine.
-
-| Section | What to change | Where |
-|---|---|---|
-| Brand name | `HELM` → your name | Find/replace `HELM` |
-| Headline | `Your brand is leaking revenue.` | Search this string |
-| Subhead | One paragraph below headline | Just below |
-| Integrations | Shopify / Meta / Google etc. | Search `integration-row` |
-| Monitoring vectors | 8 cards | Search `monitor-grid` |
-| Recommendations feed | Sample insights | Search `feed-body` |
-| Pricing | 3 tiers + amounts | Search `class="pricing"` |
-| Email capture | CTA form action | Search `email-capture` |
-| Footer | Year, brand | Search `Yuvaan Technologies` |
-
-To change the accent color (neon green → anything else):
-- Open `index.html`
-- Find `--accent: #00FF88;` near the top
-- Change it. Done. Every accent updates.
-
----
-
-## File structure
+## Tenant flow
 
 ```
-helm-landing/
-├── index.html       # Entire landing page
-├── favicon.svg      # Browser tab icon
-├── vercel.json      # Vercel config (clean URLs, security headers)
-├── robots.txt       # SEO crawl rules
-├── .gitignore       # What git should ignore
-└── README.md        # This file
+visit /signup
+    → Supabase signup (email + password or Google OAuth)
+visit /onboarding
+    → wizard step 3: "Connect Shopify"
+    → modal asks for your shop URL (acme.myshopify.com)
+    → 302 to /api/integrations/shopify/install?shop=acme.myshopify.com
+    → 302 to https://acme.myshopify.com/admin/oauth/authorize?...
+    → merchant approves → 302 back to /api/integrations/shopify/callback
+    → HMAC verified, code → access_token, stored scoped to user_id
+    → "Shopify connected · 1,284 orders detected" notification fires
+    → redirect to /onboarding?connected=shopify
+    → wizard step 4: AI analysis runs against /api/shopify/analytics
+    → redirect to /dashboard?onboarded=1
+visit /dashboard
+    → /api/shopify/analytics fetches live orders + products
+    → real KPIs, daily revenue series, top products, funnel
 ```
 
-No build step. No node_modules. No framework. Just HTML + CSS + JS in one file. This is intentional — fast to ship, fast to load, easy to hand off.
+Alternate entry (App Store install):
+- Shopify directs merchant to `https://your-domain/?shop=…`
+- Landing page's inline script detects `?shop=` → bounces to install
 
----
+## Token lifecycle
 
-## What's next
+- Shopify offline tokens don't expire by default → no refresh logic.
+- If a tenant uninstalls the app or revokes the grant, the next
+  `/api/shopify/analytics` call gets a 401 from Shopify, sets the
+  integration row's status to `revoked`, fires a critical notification,
+  and the dashboard shows a "Reconnect Shopify" CTA instead of stale data.
 
-When HELM moves from landing page → real product, this scaffold graduates to Next.js. The landing page stays as-is at the root; the product moves to `/app`.
+## Multi-tenant security
 
-Roadmap:
-- [ ] Wire email capture to Loops / Resend / ConvertKit (real waitlist backend)
-- [ ] Add `/audit` route — interactive intake form
-- [ ] Add `/manifesto` — long-form positioning page
-- [ ] Add OG image (1200x630 social preview)
-- [ ] Move to Next.js when product backend is ready
+- ✅ Tokens stored in `integrations.access_token`, column-level SELECT
+  REVOKEd from anon + authenticated — only the service role (server)
+  can read them
+- ✅ Every analytics call resolves the caller's tenant from their
+  Supabase JWT, then reads only that tenant's integration row
+- ✅ All tables RLS-protected by `auth.uid()`
+- ✅ OAuth state HMAC-signed, 10-min expiry, HttpOnly Secure Lax cookie
+- ✅ Shopify HMAC validated on every callback
+- ✅ Iframe embedding blocked (`X-Frame-Options: SAMEORIGIN` + CSP
+  `frame-ancestors 'self'`) — clickjacking-safe
+- ✅ Service-role key only used in `/api/*` routes, never sent to browser
+
+## Status of each integration
+
+| Provider     | OAuth | Live data | Notes |
+|--------------|-------|-----------|-------|
+| Shopify      | ✅    | ✅        | Orders, products, customers, funnel |
+| Meta Ads     | —     | —         | Coming soon (UI only) |
+| Google GA4   | —     | —         | Coming soon (UI only) |
+| Google Ads   | —     | —         | Coming soon (UI only) |
+| Klaviyo      | —     | —         | Coming soon (UI only) |
+
+Each new provider adds 2 functions (install + callback) plus an
+analytics route — still well within Vercel Hobby's 12-function cap.
 
 ---
 

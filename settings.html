@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Settings · HELM</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body class="app-bg">
+
+<div id="app-root">
+  <div class="page-body">
+    <div class="page-head">
+      <div>
+        <h1>Settings</h1>
+        <p class="subtitle">Manage integrations, alerts and your subscription.</p>
+      </div>
+    </div>
+
+    <div class="panel mb-4">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Connected sources</div>
+          <div class="panel-sub">Data feeds powering your insights</div>
+        </div>
+        <a href="/onboarding" class="btn btn-subtle btn-sm">+ Add new</a>
+      </div>
+      <div class="integ-grid" id="integGrid"></div>
+    </div>
+
+    <div class="panel mb-4">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Alerts</div>
+          <div class="panel-sub">When HELM should ping you about anomalies</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="flex items-center justify-between" style="padding:8px 0;border-bottom:1px solid var(--border);">
+          <div>
+            <div class="font-medium text-sm">ROAS drop alert</div>
+            <div class="text-tertiary text-xs">Notify when ROAS drops more than 20% day-over-day</div>
+          </div>
+          <label class="switch"><input type="checkbox" checked><span class="track"></span></label>
+        </div>
+        <div class="flex items-center justify-between" style="padding:8px 0;border-bottom:1px solid var(--border);">
+          <div>
+            <div class="font-medium text-sm">Conversion rate floor</div>
+            <div class="text-tertiary text-xs">Notify when CVR drops below 1.5%</div>
+          </div>
+          <label class="switch"><input type="checkbox" checked><span class="track"></span></label>
+        </div>
+        <div class="flex items-center justify-between" style="padding:8px 0;border-bottom:1px solid var(--border);">
+          <div>
+            <div class="font-medium text-sm">Creative fatigue</div>
+            <div class="text-tertiary text-xs">Notify when any ad set crosses frequency 5.0</div>
+          </div>
+          <label class="switch"><input type="checkbox" checked><span class="track"></span></label>
+        </div>
+        <div class="flex items-center justify-between" style="padding:8px 0;border-bottom:1px solid var(--border);">
+          <div>
+            <div class="font-medium text-sm">Inventory low-stock</div>
+            <div class="text-tertiary text-xs">Notify when a top-10 SKU goes below 30 units</div>
+          </div>
+          <label class="switch"><input type="checkbox"><span class="track"></span></label>
+        </div>
+        <div class="flex items-center justify-between" style="padding:8px 0;">
+          <div>
+            <div class="font-medium text-sm">Weekly AI report</div>
+            <div class="text-tertiary text-xs">Email your weekly growth report every Monday at 9am</div>
+          </div>
+          <label class="switch"><input type="checkbox" checked><span class="track"></span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel mb-4">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Notification channels</div>
+          <div class="panel-sub">Where HELM sends alerts</div>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div style="padding:14px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg-elevated);">
+          <div class="flex items-center justify-between mb-2">
+            <div class="font-medium text-sm">Email</div>
+            <label class="switch"><input type="checkbox" checked><span class="track"></span></label>
+          </div>
+          <div class="text-tertiary text-xs mono" id="emailDest">—</div>
+        </div>
+        <div style="padding:14px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg-elevated);">
+          <div class="flex items-center justify-between mb-2">
+            <div class="font-medium text-sm">Slack</div>
+            <label class="switch"><input type="checkbox"><span class="track"></span></label>
+          </div>
+          <div class="text-tertiary text-xs">Connect a Slack workspace</div>
+        </div>
+        <div style="padding:14px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg-elevated);">
+          <div class="flex items-center justify-between mb-2">
+            <div class="font-medium text-sm">WhatsApp</div>
+            <label class="switch"><input type="checkbox"><span class="track"></span></label>
+          </div>
+          <div class="text-tertiary text-xs">Coming soon</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Subscription</div>
+          <div class="panel-sub" id="subSub">Loading…</div>
+        </div>
+        <a href="/pricing" class="btn btn-primary btn-sm">Manage plan</a>
+      </div>
+      <div id="subBody"><div class="skeleton skeleton-line med"></div></div>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/js/supabase.js"></script>
+<script src="/assets/js/ui.js"></script>
+<script src="/assets/js/notifications.js"></script>
+<script src="/assets/js/integrations.js"></script>
+<script src="/assets/js/app-shell.js"></script>
+<script>
+(async function () {
+  const ctx = await window.HelmShell.mount({ active: '/settings' });
+  if (!ctx) return;
+  const { user } = ctx;
+  const sb = await window.HelmSupabase.getClient();
+
+  document.getElementById('emailDest').textContent = user.email;
+
+  async function loadInteg() {
+    const conns = await window.HelmIntegrations.listConnections(user.id);
+    document.getElementById('integGrid').innerHTML = window.HelmIntegrations.CATALOG.map((i) => window.HelmIntegrations.renderCard(i, conns[i.id])).join('');
+    document.querySelectorAll('.js-connect').forEach((b) => b.addEventListener('click', async () => {
+      b.disabled = true; b.innerHTML = '<span class="spinner"></span> Connecting…';
+      await window.HelmIntegrations.startConnect(b.dataset.p);
+      await loadInteg();
+    }));
+    document.querySelectorAll('.js-disconnect').forEach((b) => b.addEventListener('click', async () => {
+      if (!confirm('Disconnect ' + b.dataset.p + '?')) return;
+      await window.HelmIntegrations.disconnect(b.dataset.p, user.id);
+      await loadInteg();
+    }));
+    document.querySelectorAll('.js-sync').forEach((b) => b.addEventListener('click', async () => {
+      b.disabled = true; b.innerHTML = '<span class="spinner"></span> Syncing…';
+      await new Promise((r) => setTimeout(r, 700));
+      window.HelmUI.toast('Sync complete', 'success', 1300);
+      b.disabled = false; b.textContent = 'Resync';
+    }));
+  }
+  await loadInteg();
+
+  const { data: subs } = await sb.from('subscriptions').select().eq('user_id', user.id).limit(1);
+  const sub = subs?.[0];
+  if (sub) {
+    document.getElementById('subSub').textContent = sub.status === 'trialing'
+      ? 'Trial · ends ' + (sub.trial_ends_at ? new Date(sub.trial_ends_at).toLocaleDateString() : 'soon')
+      : sub.status;
+    document.getElementById('subBody').innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:18px;">
+        <div><div class="eyebrow">Plan</div><div style="font-size:18px;font-weight:600;text-transform:capitalize;margin-top:4px;">${sub.plan}</div></div>
+        <div><div class="eyebrow">Status</div><div style="font-size:18px;font-weight:600;text-transform:capitalize;margin-top:4px;">${sub.status}</div></div>
+        ${sub.trial_ends_at ? `<div><div class="eyebrow">Trial ends</div><div style="font-size:18px;font-weight:600;margin-top:4px;">${new Date(sub.trial_ends_at).toLocaleDateString()}</div></div>` : ''}
+        <div><div class="eyebrow">Billing</div><div style="font-size:18px;font-weight:600;margin-top:4px;">${sub.billing_provider || 'None'}</div></div>
+      </div>`;
+  } else {
+    document.getElementById('subSub').textContent = 'No active plan';
+    document.getElementById('subBody').innerHTML = '<a href="/pricing" class="btn btn-primary btn-sm">Start free trial</a>';
+  }
+})();
+</script>
+</body>
+</html>

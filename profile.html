@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Profile · HELM</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body class="app-bg">
+
+<div id="app-root">
+  <div class="page-body">
+    <div class="page-head">
+      <div>
+        <h1>Profile</h1>
+        <p class="subtitle">Personal info, brand and growth goal.</p>
+      </div>
+    </div>
+
+    <div class="panel mb-4" style="display:flex;align-items:center;gap:18px;">
+      <div class="avatar" style="width:64px;height:64px;font-size:22px;border-radius:50%;background:var(--accent-grad);display:grid;place-items:center;color:#0A0D11;font-weight:700;box-shadow:0 0 0 1px rgba(255,255,255,0.06) inset, 0 0 24px rgba(0,255,136,0.25);" id="avatarBig">F</div>
+      <div class="flex-1">
+        <div style="font-size:18px;font-weight:600;" id="pName">—</div>
+        <div class="text-muted text-sm" id="pEmail">—</div>
+      </div>
+      <span class="tag opportunity" id="planTag">Free Trial</span>
+    </div>
+
+    <div class="grid-2 mb-4">
+      <div class="panel">
+        <div class="panel-head"><div><div class="panel-title">Personal</div><div class="panel-sub">Used for greetings and notifications</div></div></div>
+        <div class="form-group">
+          <label class="form-label">Full name</label>
+          <input class="form-input" id="nameInp" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" id="emailInp" disabled />
+          <div class="form-hint">Email cannot be changed — contact support to migrate.</div>
+        </div>
+        <button class="btn btn-primary" id="savePersonal">Save</button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><div><div class="panel-title">Brand</div><div class="panel-sub">Shapes how HELM analyzes your data</div></div></div>
+        <div class="form-group">
+          <label class="form-label">Brand name</label>
+          <input class="form-input" id="brandInp" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-select" id="industrySel">
+            <option>Coffee & Beverage</option><option>Apparel</option><option>Beauty & Skincare</option>
+            <option>Health & Wellness</option><option>Home & Lifestyle</option><option>Food</option>
+            <option>Electronics</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Monthly GMV</label>
+          <select class="form-select" id="gmvSel">
+            <option>&lt; ₹5L</option><option>₹5L – ₹25L</option><option>₹25L – ₹1Cr</option><option>₹1Cr – ₹5Cr</option><option>₹5Cr+</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="saveBrand">Save</button>
+      </div>
+    </div>
+
+    <div class="panel mb-4">
+      <div class="panel-head"><div><div class="panel-title">Primary goal</div><div class="panel-sub">HELM prioritizes insights toward this</div></div></div>
+      <div class="choice-grid" id="goalGrid"></div>
+    </div>
+
+    <div class="panel" style="border-color:rgba(255,84,112,0.18);">
+      <div class="panel-head">
+        <div><div class="panel-title text-danger">Danger zone</div><div class="panel-sub">These actions can't be undone</div></div>
+      </div>
+      <div class="flex gap-3 flex-wrap">
+        <button class="btn btn-danger" id="signOutBtn">Sign out</button>
+        <button class="btn btn-danger" id="deleteAcctBtn">Delete account</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/js/supabase.js"></script>
+<script src="/assets/js/ui.js"></script>
+<script src="/assets/js/notifications.js"></script>
+<script src="/assets/js/app-shell.js"></script>
+<script>
+(async function () {
+  const ctx = await window.HelmShell.mount({ active: '/profile' });
+  if (!ctx) return;
+  const { user } = ctx;
+  const sb = await window.HelmSupabase.getClient();
+  const meta = user.user_metadata || {};
+
+  const name = meta.full_name || meta.brand_name || (user.email ? user.email.split('@')[0] : 'Founder');
+  document.getElementById('pName').textContent = name;
+  document.getElementById('pEmail').textContent = user.email || '';
+  document.getElementById('avatarBig').textContent = (name[0] || 'F').toUpperCase();
+  document.getElementById('nameInp').value = meta.full_name || '';
+  document.getElementById('emailInp').value = user.email || '';
+  document.getElementById('brandInp').value = meta.brand_name || '';
+
+  const { data: orgs } = await sb.from('organizations').select().eq('user_id', user.id).limit(1);
+  const org = orgs && orgs[0];
+  const orgMeta = (org && org.metadata) || {};
+  if (orgMeta.industry) document.getElementById('industrySel').value = orgMeta.industry;
+  if (orgMeta.monthly_gmv) document.getElementById('gmvSel').value = orgMeta.monthly_gmv;
+
+  const goals = [
+    { v: 'roas',  t: 'Improve blended ROAS',  d: 'Lower CAC, scale paid efficiently', i: '↗' },
+    { v: 'cvr',   t: 'Lift conversion rate',  d: 'Fix funnel drop-offs',              i: '%' },
+    { v: 'ltv',   t: 'Grow customer LTV',     d: 'Repeat rate, retention flows',      i: '♻' },
+    { v: 'scale', t: 'Scale revenue 2-3x',    d: 'Expand channels and markets',       i: '⚡' },
+  ];
+  const currentGoal = orgMeta.primary_goal;
+  document.getElementById('goalGrid').innerHTML = goals.map((g) => `
+    <div class="choice ${currentGoal === g.v ? 'active' : ''}" data-v="${g.v}">
+      <div class="ch-icon"><span class="mono">${g.i}</span></div>
+      <div><div class="ch-title">${g.t}</div><div class="ch-desc">${g.d}</div></div>
+    </div>
+  `).join('');
+
+  document.querySelectorAll('#goalGrid .choice').forEach((c) => c.addEventListener('click', async () => {
+    document.querySelectorAll('#goalGrid .choice').forEach((x) => x.classList.remove('active'));
+    c.classList.add('active');
+    await sb.from('organizations').upsert({
+      user_id: user.id,
+      name: orgMeta.brand_name || meta.brand_name || 'My brand',
+      metadata: { ...orgMeta, primary_goal: c.dataset.v },
+    }, { onConflict: 'user_id' });
+    window.HelmUI.toast('Goal updated', 'success', 1200);
+  }));
+
+  document.getElementById('savePersonal').addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      // Note: in demo mode user_metadata update is a no-op; in real Supabase you'd call sb.auth.updateUser().
+      window.HelmUI.toast('Saved', 'success');
+    } catch (err) { window.HelmUI.toast(err.message, 'error'); }
+    e.currentTarget.disabled = false;
+  });
+
+  document.getElementById('saveBrand').addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      await sb.from('organizations').upsert({
+        user_id: user.id,
+        name: document.getElementById('brandInp').value,
+        metadata: {
+          ...orgMeta,
+          industry: document.getElementById('industrySel').value,
+          monthly_gmv: document.getElementById('gmvSel').value,
+        },
+      }, { onConflict: 'user_id' });
+      window.HelmUI.toast('Saved', 'success');
+    } catch (err) { window.HelmUI.toast(err.message, 'error'); }
+    e.currentTarget.disabled = false;
+  });
+
+  document.getElementById('signOutBtn').addEventListener('click', async () => {
+    if (confirm('Sign out of HELM?')) await window.HelmSupabase.signOut();
+  });
+  document.getElementById('deleteAcctBtn').addEventListener('click', () => {
+    if (confirm('Delete your account? This will permanently remove all data.')) {
+      window.HelmUI.toast('Account deletion is disabled in demo', 'warning', 3000);
+    }
+  });
+})();
+</script>
+</body>
+</html>

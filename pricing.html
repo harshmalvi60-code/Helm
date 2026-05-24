@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pricing · HELM</title>
+<meta name="description" content="Simple, transparent pricing. Start with a 14-day free trial." />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body class="app-bg">
+
+<div class="aurora"></div>
+
+<nav style="position:sticky;top:0;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);background:rgba(6,7,8,0.72);border-bottom:1px solid var(--border);z-index:50;">
+  <div style="max-width:1180px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;">
+    <a href="/" class="auth-logo" style="margin:0;"><span class="mark"></span><span>HELM</span></a>
+    <div class="flex gap-4 items-center">
+      <a href="/login" class="text-muted text-sm">Sign in</a>
+      <a href="/signup" class="btn btn-primary btn-sm">Start free trial</a>
+    </div>
+  </div>
+</nav>
+
+<main style="max-width:1180px;margin:0 auto;padding:80px 24px 80px;position:relative;z-index:1;">
+  <div style="text-align:center;margin-bottom:48px;">
+    <span class="tag neutral" style="margin-bottom:18px;display:inline-block;">PRICING</span>
+    <h1 style="font-size:46px;font-weight:600;letter-spacing:-0.025em;margin-bottom:14px;line-height:1.05;">
+      Pick what fits today.<br><span class="text-accent">Upgrade when you scale.</span>
+    </h1>
+    <p class="text-muted" style="font-size:16px;max-width:640px;margin:0 auto;line-height:1.55;">All plans include a 14-day free trial. No credit card required. Cancel anytime.</p>
+  </div>
+
+  <div class="flex items-center justify-between mb-8" style="max-width:280px;margin: 0 auto 36px;background:var(--bg-card);border:1px solid var(--border);border-radius:100px;padding:5px;">
+    <button class="btn btn-sm on" id="billMonthly" style="flex:1;border-radius:100px;">Monthly</button>
+    <button class="btn btn-sm" id="billYearly" style="flex:1;border-radius:100px;background:transparent;color:var(--text-secondary);">
+      Yearly <span class="text-accent ml-1" style="margin-left:4px;">−20%</span>
+    </button>
+  </div>
+
+  <div class="pricing-grid" id="pricingGrid"></div>
+
+  <div class="mt-8" style="margin-top:60px;max-width:760px;margin-left:auto;margin-right:auto;text-align:center;">
+    <p class="text-muted text-sm">Need a custom contract, SOC2 / DPA, or multi-brand? <a href="mailto:hello@helm.ai" class="text-accent">Talk to founders →</a></p>
+  </div>
+
+  <div style="margin-top:80px;max-width:760px;margin-left:auto;margin-right:auto;">
+    <h2 style="font-size:28px;font-weight:600;margin-bottom:24px;text-align:center;letter-spacing:-0.022em;">Frequently asked</h2>
+    <div id="faqs"></div>
+  </div>
+</main>
+
+<script src="/assets/js/supabase.js"></script>
+<script src="/assets/js/ui.js"></script>
+<script>
+const PLANS = [
+  { tier: 'Starter', plan: 'starter',
+    monthly: 4900, yearly: 3900,
+    desc: 'For founders just plugging HELM in.',
+    features: [
+      'Up to ₹15L monthly GMV',
+      '2 connected sources',
+      'Daily AI insights',
+      'Weekly growth report',
+      'Email support',
+    ],
+    cta: 'Start free trial', href: '/signup' },
+  { tier: 'Growth', plan: 'growth', featured: true,
+    monthly: 14900, yearly: 11900,
+    desc: 'The default for scaling D2C brands.',
+    features: [
+      'Up to ₹1Cr monthly GMV',
+      'All 5 integrations',
+      'Real-time alerts (Slack + email)',
+      'Creative fatigue detection',
+      'Cohort + LTV analysis',
+      'Priority chat support',
+    ],
+    cta: 'Start free trial', href: '/signup?plan=growth' },
+  { tier: 'Scale', plan: 'scale',
+    monthly: 39900, yearly: 31900,
+    desc: 'Multi-brand operators and category leaders.',
+    features: [
+      'Unlimited GMV',
+      'Multi-store workspace',
+      'Custom AI workflows',
+      'Dedicated growth analyst',
+      'SOC2 & DPA available',
+      'Slack channel with founders',
+    ],
+    cta: 'Contact sales', href: 'mailto:hello@helm.ai' },
+];
+
+const Check = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+let yearly = false;
+
+function render() {
+  document.getElementById('pricingGrid').innerHTML = PLANS.map((p) => `
+    <div class="price-card ${p.featured ? 'featured' : ''}">
+      ${p.featured ? '<span class="featured-label">Most popular</span>' : ''}
+      <div class="price-tier">${p.tier}</div>
+      <div class="price-amount">₹${(yearly ? p.yearly : p.monthly).toLocaleString('en-IN')}<span class="unit"> /mo</span></div>
+      <div class="price-desc">${p.desc}${yearly ? ' Billed annually.' : ''}</div>
+      <ul class="price-features">${p.features.map((f) => `<li>${Check}<span>${f}</span></li>`).join('')}</ul>
+      <a href="${p.href}" class="btn ${p.featured ? 'btn-primary' : 'btn-ghost'} btn-block" data-plan="${p.plan}">${p.cta}</a>
+    </div>
+  `).join('');
+}
+
+function renderFaqs() {
+  const items = [
+    ['How does the 14-day trial work?', 'You get full access on every plan, no card required. We send a heads-up 3 days before it ends.'],
+    ['Do you need write access to my store?', 'No. HELM is read-only. We never run ads, post emails, or change products. You stay in control.'],
+    ['Where is my data stored?', 'In encrypted Postgres on Supabase (EU/US regions). Tokens are encrypted at rest; you can revoke them any time.'],
+    ['Can I bring my own AI key?', 'On Scale you can BYO Claude or OpenAI keys for unlimited generations and zero rate-limits.'],
+    ['Can I cancel anytime?', 'Yes. One click, no questions, no clawbacks. Pause or downgrade also work.'],
+  ];
+  document.getElementById('faqs').innerHTML = items.map(([q, a]) => `
+    <details style="border-bottom:1px solid var(--border);padding:20px 4px;">
+      <summary style="cursor:pointer;font-weight:600;font-size:15px;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+        <span>${q}</span>
+        <span class="text-tertiary mono" style="font-size:18px;line-height:1;transition:transform 0.2s;">+</span>
+      </summary>
+      <p style="margin-top:12px;color:var(--text-secondary);font-size:14px;line-height:1.7;">${a}</p>
+    </details>
+  `).join('');
+}
+
+const styleSheet = document.createElement('style');
+styleSheet.textContent = `details[open] summary span.mono { transform: rotate(45deg); }`;
+document.head.appendChild(styleSheet);
+
+function setBill(isYearly) {
+  yearly = isYearly;
+  const m = document.getElementById('billMonthly');
+  const y = document.getElementById('billYearly');
+  if (isYearly) {
+    y.classList.add('on'); y.style.cssText = 'flex:1;border-radius:100px;';
+    m.classList.remove('on'); m.style.cssText = 'flex:1;border-radius:100px;background:transparent;color:var(--text-secondary);';
+  } else {
+    m.classList.add('on'); m.style.cssText = 'flex:1;border-radius:100px;';
+    y.classList.remove('on'); y.style.cssText = 'flex:1;border-radius:100px;background:transparent;color:var(--text-secondary);';
+  }
+  render();
+}
+document.getElementById('billMonthly').addEventListener('click', () => setBill(false));
+document.getElementById('billYearly').addEventListener('click', () => setBill(true));
+
+// Style the .on segment to match the segmented control
+const segOnStyle = document.createElement('style');
+segOnStyle.textContent = `
+  #billMonthly.on, #billYearly.on {
+    background: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  }
+`;
+document.head.appendChild(segOnStyle);
+
+render();
+renderFaqs();
+setBill(false);
+
+(async function () {
+  const u = await window.HelmSupabase.currentUser();
+  if (!u) return;
+  document.querySelectorAll('[data-plan]').forEach((b) => {
+    if (b.dataset.plan !== 'scale') {
+      b.textContent = 'Upgrade to ' + b.dataset.plan.charAt(0).toUpperCase() + b.dataset.plan.slice(1);
+      b.href = '/settings?plan=' + b.dataset.plan;
+    }
+  });
+})();
+</script>
+</body>
+</html>
